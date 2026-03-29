@@ -5,3 +5,4 @@ __pycache__/
 # Ignore macOS Finder metadata
 .DS_Store
 packets.db
+run.sh
