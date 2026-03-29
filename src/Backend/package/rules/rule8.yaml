@@ -1,0 +1,9 @@
+id: connection_burst
+description: Sudden spike in outbound connections
+severity: medium
+conditions:
+  - field: connection_count
+    operator: ">"
+    value: 100
+window: 30
+tags: [anomaly]

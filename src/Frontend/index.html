@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NetGuard Analytics — Enterprise Network Intelligence</title>
+<!-- 
+  LANDING PAGE (index.html)
+  ========================
+  Marketing site for NetGuard network monitoring platform.
+  Features: Hero stats, service cards (6 core modules), testimonials, contact.
+  Design: Navy/gold theme, glassmorphism nav, scroll reveals.
+  CTAs → login.html (demo auth → dashboard.html).
+  
+  RESPONSIVE: Mobile stacks grids to single column.
+  
+  NO JS DEPENDENCIES: Pure CSS animations + lightweight modal.
+-->
+
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* ── COLOR PALETTE ── Navy enterprise theme w/ gold accents */
+    --navy: #0d1b2e;
+    --navy-mid: #152540;
+    --navy-light: #1e3358;
+    --gold: #c8a96e;
+    --gold-light: #e2c98a;
+    --gold-dim: #a8894e;
+    --cream: #f5f0e8;
+    --cream-dark: #ede6d6;
+    --white: #ffffff;
+    --text-dark: #1a1a2e;
+    --text-mid: #4a5568;
+    --text-light: #8a97aa;
+  }
+
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Barlow', sans-serif;
+    background: var(--cream);
+    color: var(--text-dark);
+    overflow-x: hidden;
+  }
+
+  /* ── FIXED NAVIGATION (Glassmorphism) ── */
+  /* Sticky header w/ backdrop blur. Logo + links + login CTA → login.html */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 4rem;
+    height: 72px;
+    background: rgba(13,27,46,0.96);
+    backdrop-filter: blur(12px); /* Modern glass effect */
+    border-bottom: 1px solid rgba(200,169,110,0.2);
+  }
+
+  .nav-logo {
+    display: flex; align-items: center; gap: 12px;
+    text-decoration: none;
+  }
+  .nav-logo-icon {
+    width: 36px; height: 36px;
+    border: 1.5px solid var(--gold);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .nav-logo-icon svg { width: 18px; height: 18px; }
+  .nav-logo-text {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1rem; font-weight: 600; letter-spacing: 0.12em;
+    color: var(--white); text-transform: uppercase;
+    line-height: 1.1;
+  }
+  .nav-logo-text span { color: var(--gold); display: block; font-weight: 400; font-size: 0.7rem; letter-spacing: 0.2em; }
+  nav ul { display: flex; gap: 2.5rem; list-style: none; }
+  nav ul a {
+    font-size: 0.78rem; font-weight: 500; letter-spacing: 0.14em;
+    text-transform: uppercase; color: rgba(255,255,255,0.75);
+    text-decoration: none; transition: color 0.25s;
+  }
+  nav ul a:hover { color: var(--gold); }
+  .nav-login-btn {
+    background: transparent;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    padding: 8px 20px;
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; cursor: pointer;
+    transition: all 0.25s;
+    text-decoration: none; display: inline-block;
+  }
+  .nav-login-btn:hover { background: var(--gold); color: var(--navy); }
+
+  /* ── HERO ── */
+  /* ── HERO SECTION (Full Viewport) ── */
+  /* Background grid + radial gradient + accent line. Animated content + stats. */
+  .hero {
+    min-height: 100vh;
+    background: var(--navy);
+    position: relative;
+    display: flex; align-items: center;
+    overflow: hidden;
+  }
+
+  .hero-bg-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(200,169,110,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(200,169,110,0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+  .hero-bg-radial {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 70% 60% at 60% 50%, rgba(30,51,88,0.8) 0%, transparent 70%);
+  }
+  .hero-accent-line {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: linear-gradient(to bottom, transparent, var(--gold), transparent);
+  }
+  .hero-content {
+    position: relative; z-index: 2;
+    padding: 0 4rem;
+    max-width: 700px;
+    animation: fadeUp 0.9s ease both;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .hero-eyebrow {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.3em;
+    text-transform: uppercase; color: var(--gold);
+    margin-bottom: 1.5rem;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .hero-eyebrow::before {
+    content: ''; display: block; width: 32px; height: 1px; background: var(--gold);
+  }
+  .hero h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(3rem, 6vw, 5.5rem);
+    font-weight: 300; line-height: 1.05;
+    color: var(--white); margin-bottom: 1.5rem;
+  }
+  .hero h1 em { font-style: italic; color: var(--gold-light); }
+  .hero-desc {
+    font-size: 1rem; font-weight: 300; line-height: 1.8;
+    color: rgba(255,255,255,0.6); margin-bottom: 2.5rem;
+    max-width: 520px;
+  }
+  .hero-btns { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .btn-primary {
+    background: var(--gold); color: var(--navy);
+    border: none; padding: 14px 36px;
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.78rem; font-weight: 600; letter-spacing: 0.14em;
+    text-transform: uppercase; cursor: pointer; transition: all 0.25s;
+    text-decoration: none; display: inline-block;
+  }
+  .btn-primary:hover { background: var(--gold-light); transform: translateY(-2px); }
+  .btn-outline {
+    background: transparent; color: var(--white);
+    border: 1px solid rgba(255,255,255,0.3); padding: 14px 36px;
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.78rem; font-weight: 500; letter-spacing: 0.14em;
+    text-transform: uppercase; cursor: pointer; transition: all 0.25s;
+    text-decoration: none; display: inline-block;
+  }
+  .btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+
+  .hero-stats {
+    position: absolute; right: 4rem; bottom: 4rem; z-index: 2;
+    display: flex; gap: 3rem;
+    animation: fadeUp 0.9s 0.3s ease both;
+  }
+  .stat { text-align: right; }
+  .stat-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.5rem; font-weight: 300; color: var(--gold);
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 0.68rem; font-weight: 500; letter-spacing: 0.18em;
+    text-transform: uppercase; color: rgba(255,255,255,0.45);
+    margin-top: 4px;
+  }
+
+  /* ── SECTION SHARED ── */
+  section { padding: 7rem 4rem; }
+  .section-eyebrow {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.7rem; font-weight: 600; letter-spacing: 0.3em;
+    text-transform: uppercase; color: var(--gold-dim);
+    margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .section-eyebrow::before { content: ''; display: block; width: 24px; height: 1px; background: var(--gold-dim); }
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    font-weight: 300; line-height: 1.15;
+    color: var(--navy); margin-bottom: 1.5rem;
+  }
+
+  /* ── ABOUT ── */
+  .about { background: var(--cream); }
+  .about-inner {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6rem; align-items: center;
+    max-width: 1200px; margin: 0 auto;
+  }
+  .about-body {
+    font-size: 1rem; font-weight: 300; line-height: 1.9;
+    color: var(--text-mid); margin-bottom: 2rem;
+  }
+  .about-img {
+    position: relative;
+  }
+  .about-img-frame {
+    width: 100%; aspect-ratio: 4/5;
+    background: var(--navy-mid);
+    position: relative; overflow: hidden;
+  }
+  .about-img-frame::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(135deg, rgba(200,169,110,0.15) 0%, transparent 50%),
+      repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(200,169,110,0.03) 10px, rgba(200,169,110,0.03) 11px);
+  }
+  .about-img-frame-inner {
+    position: absolute; inset: 24px;
+    border: 1px solid rgba(200,169,110,0.25);
+    display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 1rem;
+  }
+  .about-img-icon svg { width: 64px; height: 64px; opacity: 0.4; }
+  .about-img-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.7rem; font-weight: 600; letter-spacing: 0.25em;
+    text-transform: uppercase; color: rgba(200,169,110,0.5);
+  }
+  .about-img-gold-bar {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 4px;
+    background: linear-gradient(90deg, var(--gold-dim), var(--gold-light), var(--gold-dim));
+  }
+
+  /* ── SERVICES ── */
+  .services { background: var(--navy); }
+  .services .section-title { color: var(--white); }
+  .services .section-eyebrow { color: var(--gold); }
+  .services .section-eyebrow::before { background: var(--gold); }
+  .services-header {
+    max-width: 1200px; margin: 0 auto 4rem;
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 2rem;
+  }
+  .services-desc {
+    font-size: 0.95rem; font-weight: 300; line-height: 1.8;
+    color: rgba(255,255,255,0.5); max-width: 400px;
+  }
+  .services-grid {
+    max-width: 1200px; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5px;
+    background: rgba(200,169,110,0.15);
+  }
+  .service-card {
+    background: var(--navy-mid);
+    padding: 2.5rem;
+    transition: background 0.3s;
+    cursor: default;
+    position: relative; overflow: hidden;
+  }
+  .service-card::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+    background: var(--gold);
+    transform: scaleX(0); transform-origin: left;
+    transition: transform 0.35s ease;
+  }
+  .service-card:hover { background: var(--navy-light); }
+  .service-card:hover::after { transform: scaleX(1); }
+  .service-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.5rem; font-weight: 300; color: rgba(200,169,110,0.2);
+    line-height: 1; margin-bottom: 1.5rem;
+  }
+  .service-icon {
+    width: 44px; height: 44px; margin-bottom: 1.2rem;
+    border: 1px solid rgba(200,169,110,0.3);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .service-icon svg { width: 20px; height: 20px; }
+  .service-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1rem; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--gold);
+    margin-bottom: 0.75rem;
+  }
+  .service-desc {
+    font-size: 0.88rem; font-weight: 300; line-height: 1.8;
+    color: rgba(255,255,255,0.5);
+  }
+  .service-tags {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: 1.2rem;
+  }
+  .service-tag {
+    font-size: 0.65rem; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border: 1px solid rgba(200,169,110,0.2);
+    color: rgba(200,169,110,0.5); padding: 3px 8px;
+  }
+
+  /* ── TESTIMONIALS ── */
+  .testimonials { background: var(--cream-dark); }
+  .testimonials-inner { max-width: 1200px; margin: 0 auto; }
+  .testimonials-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 3rem;
+  }
+  .testimonial-card {
+    background: var(--white);
+    padding: 2rem 2rem 1.5rem;
+    border-top: 2px solid var(--gold);
+    position: relative;
+  }
+  .testimonial-quote {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 3rem; color: var(--gold); opacity: 0.3;
+    line-height: 0.6; margin-bottom: 1rem;
+  }
+  .testimonial-text {
+    font-size: 0.9rem; font-weight: 300; line-height: 1.85;
+    color: var(--text-mid); margin-bottom: 1.5rem;
+  }
+  .testimonial-author {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--gold-dim);
+  }
+
+  /* ── LOGIN MODAL ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 200;
+    background: rgba(13,27,46,0.88);
+    backdrop-filter: blur(6px);
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--navy-mid);
+    width: 460px; max-width: 95vw;
+    border: 1px solid rgba(200,169,110,0.25);
+    position: relative;
+    animation: modalIn 0.35s cubic-bezier(0.34,1.2,0.64,1) both;
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .modal-top-bar {
+    height: 3px;
+    background: linear-gradient(90deg, var(--gold-dim), var(--gold-light), var(--gold-dim));
+  }
+  .modal-close {
+    position: absolute; top: 1.2rem; right: 1.5rem;
+    background: none; border: none; cursor: pointer;
+    color: rgba(255,255,255,0.4); font-size: 1.2rem;
+    transition: color 0.2s;
+  }
+  .modal-close:hover { color: var(--gold); }
+  .modal-body { padding: 2.5rem 3rem 3rem; }
+  .modal-eyebrow {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.65rem; font-weight: 600; letter-spacing: 0.3em;
+    text-transform: uppercase; color: var(--gold);
+    margin-bottom: 0.5rem;
+  }
+  .modal-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2rem; font-weight: 300; color: var(--white);
+    margin-bottom: 2rem;
+  }
+  .form-group { margin-bottom: 1.5rem; }
+  .form-label {
+    display: block; font-size: 0.7rem; font-weight: 600;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: rgba(255,255,255,0.45); margin-bottom: 8px;
+  }
+  .form-input {
+    width: 100%; padding: 12px 16px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(200,169,110,0.2);
+    color: var(--white);
+    font-family: 'Barlow', sans-serif; font-size: 0.9rem;
+    outline: none; transition: border-color 0.25s;
+  }
+  .form-input::placeholder { color: rgba(255,255,255,0.2); }
+  .form-input:focus { border-color: var(--gold); background: rgba(200,169,110,0.05); }
+  .form-submit {
+    width: 100%; padding: 14px;
+    background: var(--gold); color: var(--navy);
+    border: none; cursor: pointer;
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.18em;
+    text-transform: uppercase; transition: all 0.25s;
+    margin-top: 0.5rem;
+  }
+  .form-submit:hover { background: var(--gold-light); transform: translateY(-1px); }
+  .form-footer {
+    text-align: center; margin-top: 1.5rem;
+    font-size: 0.8rem; font-weight: 300;
+    color: rgba(255,255,255,0.35);
+  }
+  .form-footer a { color: var(--gold); text-decoration: none; }
+  .form-footer a:hover { text-decoration: underline; }
+  .form-divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 1.5rem 0;
+  }
+  .form-divider::before, .form-divider::after {
+    content: ''; flex: 1; height: 1px; background: rgba(200,169,110,0.15);
+  }
+  .form-divider span { font-size: 0.68rem; color: rgba(255,255,255,0.25); letter-spacing: 0.1em; }
+
+  /* ── CONTACT / FOOTER ── */
+  .contact { background: var(--navy); }
+  .contact-inner {
+    max-width: 1200px; margin: 0 auto;
+    display: grid; grid-template-columns: 1.5fr 1fr; gap: 6rem; align-items: start;
+  }
+  .contact .section-title { color: var(--white); margin-bottom: 1rem; }
+  .contact .section-eyebrow { color: var(--gold); }
+  .contact .section-eyebrow::before { background: var(--gold); }
+  .contact-desc {
+    font-size: 0.9rem; font-weight: 300; line-height: 1.9;
+    color: rgba(255,255,255,0.45); margin-bottom: 2.5rem;
+  }
+  .contact-items { display: flex; flex-direction: column; gap: 1.2rem; }
+  .contact-item {
+    display: flex; align-items: flex-start; gap: 1rem;
+  }
+  .contact-item-icon {
+    width: 34px; height: 34px; flex-shrink: 0;
+    border: 1px solid rgba(200,169,110,0.25);
+    display: flex; align-items: center; justify-content: center;
+    margin-top: 2px;
+  }
+  .contact-item-icon svg { width: 14px; height: 14px; }
+  .contact-item-label {
+    font-size: 0.68rem; font-weight: 600; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--gold-dim); margin-bottom: 3px;
+  }
+  .contact-item-val {
+    font-size: 0.88rem; font-weight: 300; color: rgba(255,255,255,0.6);
+  }
+  .hours-block { }
+  .hours-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--gold); margin-bottom: 1.2rem;
+  }
+  .hours-row {
+    display: flex; justify-content: space-between;
+    padding: 0.7rem 0; border-bottom: 1px solid rgba(200,169,110,0.08);
+    font-size: 0.82rem; font-weight: 300;
+  }
+  .hours-row .day { color: rgba(255,255,255,0.45); }
+  .hours-row .time { color: rgba(255,255,255,0.7); }
+  .hours-row.closed .time { color: rgba(200,169,110,0.4); }
+
+  footer {
+    background: #070f1c;
+    padding: 2rem 4rem;
+    display: flex; align-items: center; justify-content: space-between;
+    border-top: 1px solid rgba(200,169,110,0.1);
+  }
+  .footer-copy {
+    font-size: 0.72rem; font-weight: 300; letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.25);
+  }
+  .footer-links { display: flex; gap: 2rem; }
+  .footer-links a {
+    font-size: 0.68rem; font-weight: 500; letter-spacing: 0.12em;
+    text-transform: uppercase; color: rgba(255,255,255,0.25);
+    text-decoration: none; transition: color 0.2s;
+  }
+  .footer-links a:hover { color: var(--gold); }
+
+  /* ── SCROLL REVEAL ── */
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 900px) {
+    section { padding: 5rem 2rem; }
+    nav { padding: 0 2rem; }
+    nav ul { display: none; }
+    .hero-content { padding: 0 2rem; }
+    .hero-stats { display: none; }
+    .about-inner, .contact-inner { grid-template-columns: 1fr; gap: 3rem; }
+    .services-grid { grid-template-columns: 1fr; }
+    .testimonials-grid { grid-template-columns: 1fr; }
+    .services-header { flex-direction: column; }
+    footer { flex-direction: column; gap: 1rem; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#c8a96e" stroke-width="1.5">
+        <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.4 5.25-1.25 9-6.15 9-11.4V7L12 2z"/>
+      </svg>
+    </div>
+    <div class="nav-logo-text">
+      NetGuard
+      <span>Analytics</span>
+    </div>
+  </a>
+  <ul>
+    <li><a href="#about">About</a></li>
+    <li><a href="#services">Services</a></li>
+    <li><a href="#testimonials">Clients</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+  <a class="nav-login-btn" href="login.html">Client Login</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg-grid"></div>
+  <div class="hero-bg-radial"></div>
+  <div class="hero-accent-line"></div>
+
+  <div class="hero-content">
+    <div class="hero-eyebrow">Enterprise Network Intelligence</div>
+    <h1>Precision packet <em>analysis</em>, at scale.</h1>
+    <p class="hero-desc">
+      We capture, dissect, and safeguard your network in real time — forwarding intelligence to the cloud so your security team always has the full picture.
+    </p>
+    <div class="hero-btns">
+      <a href="#services" class="btn-primary">Explore Services</a>
+      <a class="btn-outline" href="login.html">Access Portal</a>
+    </div>
+  </div>
+
+  <div class="hero-stats">
+    <div class="stat">
+      <div class="stat-num">99.9%</div>
+      <div class="stat-label">Uptime SLA</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">TLS 1.3</div>
+      <div class="stat-label">Encrypted Transit</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">AWS</div>
+      <div class="stat-label">Cloud Storage</div>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section class="about" id="about">
+  <div class="about-inner">
+    <div>
+      <div class="section-eyebrow reveal">Our Approach</div>
+      <h2 class="section-title reveal">How we protect your network.</h2>
+      <p class="about-body reveal">
+        Our clients' security is our top priority. We operate in continuous communication with every layer of your infrastructure — committed to advancing real-time threat visibility and packet-level forensics.
+        <br><br>
+        Our platform works around the clock, sniffing traffic, extracting meaningful metadata, and routing intelligence to secure cloud storage — so you never miss a signal.
+      </p>
+      <a href="#services" class="btn-primary reveal">View Our Services</a>
+    </div>
+    <div class="about-img reveal">
+      <div class="about-img-frame">
+        <div class="about-img-frame-inner">
+          <div class="about-img-icon">
+            <svg viewBox="0 0 64 64" fill="none" stroke="#c8a96e" stroke-width="1.2">
+              <rect x="8" y="20" width="48" height="28" rx="2"/>
+              <path d="M20 20V16a12 12 0 0 1 24 0v4"/>
+              <circle cx="32" cy="34" r="4"/>
+              <path d="M32 38v6"/>
+            </svg>
+          </div>
+          <div class="about-img-label">Secure · Reliable · Scalable</div>
+        </div>
+        <div class="about-img-gold-bar"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SERVICES -->
+<section class="services" id="services">
+  <div class="services-header reveal">
+    <div>
+      <div class="section-eyebrow">Core Capabilities</div>
+      <h2 class="section-title">Our main<br>services.</h2>
+    </div>
+    <p class="services-desc">
+      From raw packet capture to structured cloud ingestion, every module in our stack is purpose-built for precision and reliability.
+    </p>
+  </div>
+
+  <div class="services-grid">
+
+    <!-- Packet Capture -->
+    <div class="service-card reveal">
+      <div class="service-num">01</div>
+      <div class="service-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#c8a96e" stroke-width="1.5">
+          <path d="M4 6h16M4 12h16M4 18h16"/>
+          <circle cx="20" cy="6" r="1" fill="#c8a96e"/>
+          <circle cx="20" cy="12" r="1" fill="#c8a96e"/>
+          <circle cx="20" cy="18" r="1" fill="#c8a96e"/>
+        </svg>
+      </div>
+      <div class="service-name">Packet Capture</div>
+      <p class="service-desc">
+        Real-time traffic sniffing on any network interface — Linux, macOS, or Windows — using an asynchronous, thread-safe queue that never drops a frame.
+      </p>
+      <div class="service-tags">
+        <span class="service-tag">Scapy</span>
+        <span class="service-tag">eth0 / en0</span>
+        <span class="service-tag">Multi-OS</span>
+      </div>
+    </div>
+
+    <!-- Metadata Extraction -->
+    <div class="service-card reveal">
+      <div class="service-num">02</div>
+      <div class="service-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#c8a96e" stroke-width="1.5">
+          <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+          <rect x="9" y="3" width="6" height="4" rx="1"/>
+          <path d="M9 12h6M9 16h4"/>
+        </svg>
+      </div>
+      <div class="service-name">Metadata Extraction</div>
+      <p class="service-desc">
+        Automatically derives source/destination IPs, ports, protocols (TCP/UDP), and precise timestamps from every captured packet — continuously, without manual intervention.
+      </p>
+      <div class="service-tags">
+        <span class="service-tag">IP Layer</span>
+        <span class="service-tag">TCP/UDP</span>
+        <span class="service-tag">Timestamping</span>
+      </div>
+    </div>
+
+    <!-- Cloud Forwarding -->
+    <div class="service-card reveal">
+      <div class="service-num">03</div>
+      <div class="service-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#c8a96e" stroke-width="1.5">
+          <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
+          <path d="M13 16l3-3-3-3M16 13H9"/>
+        </svg>
+      </div>
+      <div class="service-name">Cloud Forwarding</div>
+      <p class="service-desc">
+        Transmits enriched metadata to AWS via a secure HTTPS endpoint with automatic retries, exponential backoff, and TLS 1.3 encryption — guaranteed delivery.
+      </p>
+      <div class="service-tags">
+        <span class="service-tag">AWS S3</span>
+        <span class="service-tag">API Gateway</span>
+        <span class="service-tag">TLS 1.3</span>
+      </div>
+    </div>
+
+    <!-- Database Storage -->
+    <div class="service-card reveal">
+      <div class="service-num">04</div>
+      <div class="service-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#c8a96e" stroke-width="1.5">
+          <ellipse cx="12" cy="5" rx="9" ry="3"/>
+          <path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/>
+          <path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/>
+        </svg>
+      </div>
+      <div class="service-name">Database Storage</div>
+      <p class="service-desc">
+        Local SQLite persistence layer for every captured packet, with auto-schema creation, atomic inserts, and full query access — your data on-premise and always retrievable.
+      </p>
+      <div class="service-tags">
+        <span class="service-tag">SQLite</span>
+        <span class="service-tag">Auto-schema</span>
+        <span class="service-tag">On-premise</span>
+      </div>
+    </div>
+
+    <!-- Rules Engine -->
+    <div class="service-card reveal">
+      <div class="service-num">05</div>
+      <div class="service-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#c8a96e" stroke-width="1.5">
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01L12 2z"/>
+        </svg>
+      </div>
+      <div class="service-name">Rules Engine</div>
+      <p class="service-desc">
+        YAML-based detection rules with multi-field conditions, severity classification, temporal windows, and tag hierarchies — hot-loaded at runtime, no restarts required.
+      </p>
+      <div class="service-tags">
+        <span class="service-tag">YAML Rules</span>
+        <span class="service-tag">Severity Tiers</span>
+        <span class="service-tag">Hot-reload</span>
+      </div>
+    </div>
+
+    <!-- Full Stack Integration -->
+    <div class="service-card reveal">
+      <div class="service-num">06</div>
+      <div class="service-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#c8a96e" stroke-width="1.5">
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <path d="M8 21h8M12 17v4"/>
+          <path d="M7 8l3 3-3 3M13 14h4"/>
+        </svg>
+      </div>
+      <div class="service-name">Full-Stack Integration</div>
+      <p class="service-desc">
+        End-to-end orchestration of the complete pipeline: capture → extract → store → forward — unified, observable, and deployable as a single managed service.
+      </p>
+      <div class="service-tags">
+        <span class="service-tag">Pipeline</span>
+        <span class="service-tag">Managed</span>
+        <span class="service-tag">Observable</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="testimonials" id="testimonials">
+  <div class="testimonials-inner">
+    <div class="section-eyebrow reveal">Client Feedback</div>
+    <h2 class="section-title reveal">Why teams trust<br>our platform.</h2>
+    <div class="testimonials-grid">
+      <div class="testimonial-card reveal">
+        <div class="testimonial-quote">"</div>
+        <p class="testimonial-text">
+          NetGuard's packet capture service gave our SOC team the real-time visibility we'd been missing for years. The cloud forwarding is seamless and the latency is negligible.
+        </p>
+        <div class="testimonial-author">— Jordan Reeves, Head of Security Ops</div>
+      </div>
+      <div class="testimonial-card reveal">
+        <div class="testimonial-quote">"</div>
+        <p class="testimonial-text">
+          The YAML rules engine changed how we write detection logic. We can push new rules and see them active within seconds — no restarts, no downtime.
+        </p>
+        <div class="testimonial-author">— Priya Nair, Senior Detection Engineer</div>
+      </div>
+      <div class="testimonial-card reveal">
+        <div class="testimonial-quote">"</div>
+        <p class="testimonial-text">
+          Having both local SQLite storage and AWS cloud ingestion in one pipeline is exactly what our compliance team required. The metadata accuracy is outstanding.
+        </p>
+        <div class="testimonial-author">— Marcus Thiel, VP Infrastructure</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section class="contact" id="contact">
+  <div class="contact-inner">
+    <div>
+      <div class="section-eyebrow reveal">Get in Touch</div>
+      <h2 class="section-title reveal">Contact Us</h2>
+      <p class="contact-desc reveal">
+        Ready to gain full visibility into your network? Our team is available to walk you through a deployment or answer any technical questions.
+      </p>
+      <div class="contact-items">
+        <div class="contact-item reveal">
+          <div class="contact-item-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#c8a96e" stroke-width="1.5"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="3"/></svg>
+          </div>
+          <div>
+            <div class="contact-item-label">Address</div>
+            <div class="contact-item-val">123 Packet Lane, Cyber City, ST 00101</div>
+          </div>
+        </div>
+        <div class="contact-item reveal">
+          <div class="contact-item-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#c8a96e" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 012.18 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 8.14a16 16 0 006 6l.52-.52a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          </div>
+          <div>
+            <div class="contact-item-label">Phone</div>
+            <div class="contact-item-val">(800) 555-0NET</div>
+          </div>
+        </div>
+        <div class="contact-item reveal">
+          <div class="contact-item-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#c8a96e" stroke-width="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <div>
+            <div class="contact-item-label">Email</div>
+            <div class="contact-item-val"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="186b7d7b6d6a716c6158767d6c7f6d796a7c3579767974616c717b6b367b7775">[email&#160;protected]</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <div class="hours-title">Operating Hours</div>
+      <div class="hours-row">
+        <span class="day">Monday – Friday</span>
+        <span class="time">24 / 7 Monitoring</span>
+      </div>
+      <div class="hours-row">
+        <span class="day">Weekend Support</span>
+        <span class="time">On-call</span>
+      </div>
+      <div class="hours-row closed">
+        <span class="day">Scheduled Maintenance</span>
+        <span class="time">02:00–04:00 UTC</span>
+      </div>
+      <br>
+      <a class="btn-primary" style="margin-top:1.5rem" href="login.html">Access Client Portal →</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-copy">© 2026 NetGuard Analytics. All rights reserved.</div>
+  <div class="footer-links">
+    <a href="#">Privacy Policy</a>
+    <a href="#">Terms of Service</a>
+    <a href="#">Security</a>
+  </div>
+</footer>
+
+<!-- LOGIN MODAL -->
+<div class="modal-overlay" id="loginModal" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-top-bar"></div>
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-body">
+      <div class="modal-eyebrow">Secure Access</div>
+      <div class="modal-title">Client Portal Login</div>
+
+      <div class="form-group">
+        <label class="form-label" for="email">Email Address</label>
+        <input class="form-input" type="email" id="email" placeholder="you@organization.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <input class="form-input" type="password" id="password" placeholder="••••••••••" />
+      </div>
+
+      <button class="form-submit" onclick="handleLogin()">Sign In to Dashboard</button>
+
+      <div class="form-divider"><span>or</span></div>
+
+      <p class="form-footer">
+        Don't have an account? <a href="#">Request access</a><br>
+        <a href="#">Forgot your password?</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+  // Modal
+  function openModal() {
+    document.getElementById('loginModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal() {
+    document.getElementById('loginModal').classList.remove('active');
+    document.body.style.overflow = '';
+  }
+  function handleOverlayClick(e) {
+    if (e.target === document.getElementById('loginModal')) closeModal();
+  }
+  function handleLogin() {
+    const email = document.getElementById('email').value;
+    const pass = document.getElementById('password').value;
+    if (!email || !pass) {
+      alert('Please enter your credentials.');
+      return;
+    }
+    alert('Login functionality would connect to your auth endpoint.');
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  // Scroll reveal
+  const observer = new IntersectionO

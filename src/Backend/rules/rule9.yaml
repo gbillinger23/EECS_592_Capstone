@@ -1,0 +1,11 @@
+id: unusual_internal_port
+description: Internal traffic on uncommon ports
+severity: medium
+conditions:
+  - field: dst_port
+    operator: "in"
+    value: [135, 445, 5985] # Example values for our purposes.
+  - field: dst_ip
+    operator: "internal"
+    value: true
+tags: [internal, anomaly]

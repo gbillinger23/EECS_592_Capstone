@@ -1,0 +1,9 @@
+id: port_scan_horizontal
+description: Source host connects to many destination ports on a single host
+severity: high
+conditions:
+  - field: unique_dst_ports
+    operator: ">"
+    value: 10
+window: 60
+tags: [scan, network]

@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetGuard Analytics — Client Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --cream: #f5f0e8;
+    --ink:   #0d1b2e;
+    --rust:  #c8a96e;
+    --gold:  #c8a96e;
+    --gold-light: #e2c98a;
+    --gold-dim:   #a8894e;
+    --muted: #6a82a0;
+    --border: rgba(200,169,110,0.2);
+    --navy-mid: #152540;
+  }
+
+  body {
+    min-height: 100vh;
+    background-color: var(--cream);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    font-family: 'DM Mono', monospace;
+    overflow: hidden;
+  }
+
+  /* Left panel */
+  .left {
+    background-color: var(--ink);
+    background-image: linear-gradient(160deg, #0d1b2e 0%, #152540 100%);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 3rem;
+    overflow: hidden;
+  }
+
+  .left::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 20% 80%, rgba(200,169,110,0.14) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 60% at 80% 20%, rgba(200,169,110,0.07) 0%, transparent 60%);
+  }
+
+  .grid-lines {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(245,240,232,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(245,240,232,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .brand {
+    position: relative;
+    z-index: 1;
+  }
+
+  .brand-mark {
+    width: 42px; height: 42px;
+    border: 1.5px solid var(--gold);
+    border-radius: 50%;
+    margin-bottom: 0.6rem;
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .brand-mark::before {
+    content: '';
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--gold);
+    animation: pdot 2s ease-in-out infinite;
+  }
+  @keyframes pdot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.6)} }
+
+  .brand-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.78rem; font-weight: 700;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: rgba(255,255,255,0.9);
+  }
+  .brand-name span { color: var(--gold); }
+
+  .hero-text {
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero-text h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2.8rem, 4vw, 4.4rem);
+    line-height: 1.05; font-weight: 300;
+    color: var(--cream);
+    margin-bottom: 1.5rem;
+  }
+  .hero-text h1 em {
+    font-style: italic;
+    color: var(--gold-light);
+  }
+
+  .hero-text p {
+    font-size: 0.75rem;
+    font-weight: 300;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    line-height: 1.8;
+    max-width: 28ch;
+  }
+
+  .left-footer {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    gap: 2rem;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .stat-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.8rem; font-weight: 300;
+    color: var(--gold);
+  }
+
+  .stat-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* Decorative line */
+  .divider-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1px;
+    background: var(--border);
+    z-index: 10;
+  }
+
+  /* Right panel */
+  .right {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    position: relative;
+  }
+
+  .right::before {
+    content: '';
+    position: absolute;
+    top: -80px;
+    right: -80px;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(196,82,42,0.06) 0%, transparent 70%);
+  }
+
+  .form-container {
+    width: 100%;
+    max-width: 360px;
+    position: relative;
+    z-index: 1;
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeUp 0.7s 0.2s ease forwards;
+  }
+
+  @keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .form-header {
+    margin-bottom: 2.5rem;
+  }
+
+  .form-header .eyebrow {
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--rust);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .form-header .eyebrow::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--gold);
+    opacity: 0.5;
+  }
+
+  .form-header h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.1rem; font-weight: 300;
+    color: var(--ink);
+    line-height: 1.2;
+  }
+
+  .form-group {
+    margin-bottom: 1.25rem;
+  }
+
+  label {
+    display: block;
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+
+  input {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--ink);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 300;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    border-radius: 0;
+    -webkit-appearance: none;
+  }
+
+  input::placeholder {
+    color: #c2bbb2;
+  }
+
+  input:focus {
+    border-color: var(--rust);
+    box-shadow: 0 0 0 3px rgba(196,82,42,0.08);
+  }
+
+  .password-row {
+    position: relative;
+  }
+
+  .toggle-pw {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 0.65rem;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.1em;
+    padding: 0;
+    transition: color 0.2s;
+  }
+
+  .toggle-pw:hover { color: var(--rust); }
+
+  .options-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 1.5rem 0;
+  }
+
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+  }
+
+  .checkbox-label input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    border: 1px solid var(--border);
+    accent-color: var(--rust);
+    cursor: pointer;
+  }
+
+  .forgot-link {
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    color: var(--rust);
+    text-decoration: none;
+    transition: opacity 0.2s;
+  }
+
+  .forgot-link:hover { opacity: 0.7; }
+
+  .btn-signin {
+    width: 100%;
+    padding: 1rem;
+    background: var(--ink);
+    color: var(--cream);
+    border: none;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 400;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.25s;
+  }
+
+  .btn-signin::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--rust);
+    transform: translateX(-100%);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .btn-signin:hover { background: var(--rust); }
+  .btn-signin:hover::after { transform: translateX(0); }
+
+  .btn-signin span {
+    position: relative;
+    z-index: 1;
+  }
+
+  .or-divider {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 1.5rem 0;
+    color: var(--muted);
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+  }
+
+  .or-divider::before,
+  .or-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .btn-sso {
+    width: 100%;
+    padding: 0.875rem;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--ink);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+
+  .btn-sso:hover {
+    border-color: var(--ink);
+  }
+
+  .signup-row {
+    text-align: center;
+    margin-top: 1.75rem;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  .signup-row a {
+    color: var(--rust);
+    text-decoration: none;
+    margin-left: 0.3rem;
+    transition: opacity 0.2s;
+  }
+
+  .signup-row a:hover { opacity: 0.7; }
+
+  /* Left panel animation */
+  .left .brand { animation: fadeUp 0.6s 0.05s ease both; }
+  .hero-text { animation: fadeUp 0.6s 0.15s ease both; }
+  .left-footer { animation: fadeUp 0.6s 0.25s ease both; }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    body { grid-template-columns: 1fr; }
+    .left { display: none; }
+    .divider-line { display: none; }
+    .right { padding: 2rem 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="left">
+  <div class="grid-lines"></div>
+
+  <div class="brand">
+    <div class="brand-mark"></div>
+    <div class="brand-name">Net<span>Guard</span></div>
+  </div>
+
+  <div class="hero-text">
+    <h1>Network intelligence<br>in <em>real time.</em></h1>
+    <p>Enterprise-grade packet capture, metadata extraction, and cloud-forwarded threat detection — unified in one platform.</p>
+  </div>
+
+  <div class="left-footer">
+    <div class="stat">
+      <div class="stat-num">99.9%</div>
+      <div class="stat-label">Uptime</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">∞</div>
+      <div class="stat-label">Packets</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">AWS</div>
+      <div class="stat-label">Cloud</div>
+    </div>
+  </div>
+</div>
+
+<div class="divider-line"></div>
+
+<div class="right">
+  <div class="form-container">
+    <div class="form-header">
+      <div class="eyebrow">Secure Access</div>
+      <h2 id="formHeading">Sign in to<br>your account</h2>
+    </div>
+
+    <!-- ══ STEP 1: EMAIL ══ -->
+    <div id="step1">
+      <div class="form-group">
+        <label for="emailInput">Email address</label>
+        <input type="email" id="emailInput" placeholder="you@netguard.io" autocomplete="email">
+      </div>
+      <div class="field-err" id="emailErr"></div>
+
+      <div class="options-row" style="justify-content:flex-end; margin-top:0">
+        <a href="#" class="forgot-link">Forgot email?</a>
+      </div>
+
+      <button class="btn-signin" id="nextBtn" onclick="handleNext()" type="button">
+        <span id="nextLabel">Next</span>
+      </button>
+
+      <div class="or-divider">or</div>
+      <button class="btn-sso" type="button">Continue with SSO</button>
+      <div class="signup-row">Don't have an account?<a href="#">Request access</a></div>
+    </div>
+
+    <!-- ══ STEP 2: PASSWORD ══ -->
+    <div id="step2" style="display:none">
+
+      <div class="email-chip" onclick="goBack()" title="Use a different account">
+        <div class="chip-avatar" id="chipAvatar">?</div>
+        <span class="chip-addr" id="chipAddr">—</span>
+        <span class="chip-caret">▾</span>
+      </div>
+
+      <div class="form-group">
+        <label for="passwordInput">Password</label>
+        <div class="password-row">
+          <input type="password" id="passwordInput" placeholder="••••••••••" autocomplete="current-password">
+          <button class="toggle-pw" onclick="togglePassword()" type="button" id="toggleBtn">show</button>
+        </div>
+      </div>
+      <div class="field-err" id="pwErr"></div>
+
+      <div class="options-row">
+        <label class="checkbox-label">
+          <input type="checkbox"> Keep me signed in
+        </label>
+        <a href="#" class="forgot-link">Forgot password?</a>
+      </div>
+
+      <button class="btn-signin" id="signInBtn" onclick="handleSignIn()" type="button">
+        <span id="signInLabel">Sign In</span>
+      </button>
+
+      <div class="signup-row" style="margin-top:1.2rem">
+        <a href="#" onclick="goBack();return false;">← Use a different account</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+  .field-err {
+    font-size: 0.65rem; color: var(--rust); letter-spacing: 0.03em;
+    min-height: 1.1rem; margin-top: -0.6rem; margin-bottom: 0.85rem; padding-left: 1px;
+    opacity: 0; transform: translateY(-3px);
+    transition: opacity 0.18s, transform 0.18s;
+  }
+  .field-err.show { opacity: 1; transform: translateY(0); }
+  input.bad {
+    border-color: var(--rust) !important;
+    box-shadow: 0 0 0 3px rgba(200,169,110,0.12) !important;
+  }
+  @keyframes shake {
+    0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)}
+    40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)}
+  }
+  .step-in { animation: fadeUp 0.26s ease both; }
+
+  /* email chip */
+  .email-chip {
+    display: inline-flex; align-items: center; gap: 9px;
+    border: 1px solid var(--border); padding: 7px 12px 7px 7px;
+    margin-bottom: 1.5rem; cursor: pointer; max-width: 100%;
+    transition: border-color 0.2s; background: transparent;
+  }
+  .email-chip:hover { border-color: var(--gold); }
+  .chip-avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--ink); color: var(--cream);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.72rem; font-weight: 700; flex-shrink: 0;
+    font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.05em;
+  }
+  .chip-addr {
+    font-size: 0.78rem; color: var(--ink); font-family: 'DM Mono', monospace;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .chip-caret { font-size: 0.6rem; color: var(--muted); margin-left: 2px; }
+
+  .btn-signin.success { background: #2e7d52 !important; color: #fff !important; }
+  .btn-signin:disabled { opacity: 0.72; cursor: default; }
+</style>
+
+<script>
+  const VALID = [
+    { email: 'admin@netguard.io',  password: 'netguard2026' },
+    { email: 'client@netguard.io', password: 'client2026'   },
+  ];
+  const DASHBOARD = '../Frontend/dashboard.html';
+
+  function showErr(errId, inputId, msg) {
+    const el = document.getElementById(errId);
+    const inp = document.getElementById(inputId);
+    el.textContent = msg; el.classList.add('show');
+    inp.classList.add('bad');
+    inp.style.animation = 'none'; void inp.offsetWidth;
+    inp.style.animation = 'shake 0.35s ease';
+  }
+  function clearErr(errId, inputId) {
+    document.getElementById(errId).classList.remove('show');
+    document.getElementById(inputId).classList.remove('bad');
+  }
+  function setLoading(btnId, labelId, txt) {
+    document.getElementById(btnId).disabled = true;
+    document.getElementById(labelId).textContent = txt;
+  }
+  function resetBtn(btnId, labelId, txt) {
+    const b = document.getElementById(btnId);
+    b.disabled = false; b.classList.remove('success');
+    document.getElementById(labelId).textContent = txt;
+  }
+
+  function handleNext() {
+    const email = document.getElementById('emailInput').value.trim();
+    clearErr('emailErr', 'emailInput');
+    if (!email) { showErr('emailErr', 'emailInput', 'Enter an email address.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showErr('emailErr', 'emailInput', 'Enter a valid email address.'); return;
+    }
+    setLoading('nextBtn', 'nextLabel', 'Checking…');
+    setTimeout(() => {
+      const match = VALID.find(c => c.email.toLowerCase() === email.toLowerCase());
+      resetBtn('nextBtn', 'nextLabel', 'Next');
+      if (!match) { showErr('emailErr', 'emailInput', "No NetGuard account found for that email."); return; }
+      document.getElementById('chipAvatar').textContent = email[0].toUpperCase();
+      document.getElementById('chipAddr').textContent   = email;
+      const s1 = document.getElementById('step1');
+      const s2 = document.getElementById('step2');
+      s1.style.display = 'none';
+      s2.style.display = 'block';
+      s2.classList.remove('step-in'); void s2.offsetWidth; s2.classList.add('step-in');
+      document.getElementById('formHeading').innerHTML = 'Enter your<br>password';
+      setTimeout(() => document.getElementById('passwordInput').focus(), 40);
+    }, 650);
+  }
+
+  function goBack() {
+    document.getElementById('step2').style.display = 'none';
+    const s1 = document.getElementById('step1');
+    s1.style.display = 'block';
+    s1.classList.remove('step-in'); void s1.offsetWidth; s1.classList.add('step-in');
+    document.getElementById('formHeading').innerHTML = 'Sign in to<br>your account';
+    clearErr('pwErr', 'passwordInput');
+    resetBtn('signInBtn', 'signInLabel', 'Sign In');
+    document.getElementById('passwordInput').value = '';
+    setTimeout(() => document.getElementById('emailInput').focus(), 40);
+  }
+
+  function handleSignIn() {
+    const email = document.getElementById('emailInput').value.trim();
+    const pass  = document.getElementById('passwordInput').value;
+    clearErr('pwErr', 'passwordInput');
+    if (!pass) { showErr('pwErr', 'passwordInput', 'Enter your password.'); return; }
+    setLoading('signInBtn', 'signInLabel', 'Signing in…');
+    setTimeout(() => {
+      const match = VALID.find(
+        c => c.email.toLowerCase() === email.toLowerCase() && c.password === pass
+      );
+      if (match) {
+        document.getElementById('signInBtn').classList.add('success');
+        document.getElementById('signInLabel').textContent = 'Access granted ✓';
+        setTimeout(() => { window.location.href = DASHBOARD; }, 700);
+      } else {
+        resetBtn('signInBtn', 'signInLabel', 'Sign In');
+        showErr('pwErr', 'passwordInput', 'Wrong password. Try again.');
+        document.getElementById('passwordInput').value = '';
+        setTimeout(() => document.getElementById('passwordInput').focus(), 40);
+      }
+    }, 750);
+  }
+
+  function togglePassword() {
+    const pw  = document.getElementById('passwordInput');
+    const btn = document.getElementById('toggleBtn');
+    pw.type = pw.type === 'password' ? 'text' : 'password';
+    btn.textContent = pw.type === 'password' ? 'show' : 'hide';
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    document.getElementById('step2').style.display !== 'none' ? handleSignIn() : handleNext();
+  });
+</script>
+</body>
+</html>

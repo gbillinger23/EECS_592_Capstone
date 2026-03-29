@@ -1,0 +1,14 @@
+id: external_ssh_attempt
+description: Outbound SSH traffic to external IPs
+severity: medium
+conditions:
+  - field: protocol
+    operator: "=="
+    value: tcp
+  - field: dst_port
+    operator: "=="
+    value: 22
+  - field: dst_ip
+    operator: "not_internal"
+    value: true
+tags: [ssh, network]

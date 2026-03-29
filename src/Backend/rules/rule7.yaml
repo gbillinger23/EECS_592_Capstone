@@ -1,0 +1,8 @@
+id: blacklist_ip_contact
+description: Internal host communicating with known malicious IP
+severity: critical
+conditions:
+  - field: dst_ip
+    operator: "in"
+    value: ["185.199.110.153", "91.121.79.58"] # These are just example values for our purposes.
+tags: [threatintel]

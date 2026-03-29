@@ -1,0 +1,7 @@
+# Ignore Python cache directories
+__pycache__/
+*.py[cod]
+
+# Ignore macOS Finder metadata
+.DS_Store
+packets.db

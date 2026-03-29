@@ -1,0 +1,15 @@
+id: external_high_port_beacon
+description: Repeated outbound connections to high-numbered external ports
+severity: high
+conditions:
+  - field: dst_port
+    operator: ">"
+    value: 20000
+  - field: connection_count
+    operator: ">"
+    value: 10
+  - field: dst_ip
+    operator: "not_internal"
+    value: true
+window: 60
+tags: [beaconing, network]

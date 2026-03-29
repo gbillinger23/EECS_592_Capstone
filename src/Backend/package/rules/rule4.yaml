@@ -1,0 +1,8 @@
+id: suspicious_high_port
+description: Traffic to uncommon high-risk destination ports
+severity: medium
+conditions:
+  - field: dst_port
+    operator: "in"
+    value: [4444, 5555, 8081, 31337] # Example values for our purposes.
+tags: [anomaly, network]

@@ -1,0 +1,9 @@
+id: lateral_movement
+description: Internal host connecting to many internal hosts unexpectedly
+severity: high
+conditions:
+  - field: unique_internal_dst_ips
+    operator: ">"
+    value: 10
+window: 120
+tags: [lateral, internal]

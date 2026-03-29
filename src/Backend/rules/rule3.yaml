@@ -1,0 +1,12 @@
+id: repeated_external_contact
+description: Multiple connections to the same external IP in short time
+severity: medium
+conditions:
+  - field: connection_count
+    operator: ">"
+    value: 20
+  - field: dst_ip
+    operator: "not_internal"
+    value: true
+window: 60
+tags: [network, beaconing]

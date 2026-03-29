@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NetGuard — Live Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:       #0d1b2e;
+  --navy-mid:   #152540;
+  --navy-light: #1e3358;
+  --navy-card:  #0f1e34;
+  --gold:       #c8a96e;
+  --gold-light: #e2c98a;
+  --gold-dim:   #a8894e;
+  --gold-faint: rgba(200,169,110,0.07);
+  --cream:      #f5f0e8;
+  --white:      #ffffff;
+  --tl:         rgba(255,255,255,0.65);
+  --td:         rgba(255,255,255,0.32);
+  --border:     rgba(200,169,110,0.14);
+  --green:      #4caf82;
+  --red:        #e05c5c;
+  --amber:      #e09840;
+  --blue:       #5c8de0;
+  --purple:     #9b7de8;
+  --mono:       'JetBrains Mono', monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Barlow',sans-serif;
+  background:var(--navy);color:var(--white);
+  min-height:100vh;overflow-x:hidden;
+}
+/* scanline */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.025) 3px,rgba(0,0,0,0.025) 4px);
+}
+
+/* ── NAV ─────────────────────────────────────────── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  height:62px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 1.8rem;
+  background:rgba(8,16,28,0.96);
+  backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+}
+.nav-left{display:flex;align-items:center;gap:1.2rem}
+.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.logo-ring{
+  width:30px;height:30px;border:1.5px solid var(--gold);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;position:relative;
+}
+.logo-ring::before{
+  content:'';position:absolute;width:7px;height:7px;border-radius:50%;
+  background:var(--gold);animation:pdot 2s ease-in-out infinite;
+}
+@keyframes pdot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.6)}}
+.brand{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:.88rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--white);
+}
+.brand span{color:var(--gold)}
+.sep{width:1px;height:22px;background:var(--border)}
+.page-label{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:.65rem;font-weight:600;letter-spacing:.26em;text-transform:uppercase;color:var(--gold);
+}
+.nav-right{display:flex;align-items:center;gap:1.2rem}
+.status-pill{display:flex;align-items:center;gap:6px;font-family:'Barlow Condensed',sans-serif;font-size:.65rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--tl)}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 7px var(--green);animation:blink 1.8s ease-in-out infinite}
+.sdot.off{background:var(--red);box-shadow:0 0 7px var(--red);animation:none}
+.sdot.warn{background:var(--amber);box-shadow:0 0 7px var(--amber)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+#clock{font-family:var(--mono);font-size:.7rem;color:var(--td)}
+.nav-btn{
+  background:transparent;border:1px solid var(--border);color:var(--gold);
+  padding:5px 13px;font-family:'Barlow Condensed',sans-serif;font-size:.62rem;
+  font-weight:600;letter-spacing:.16em;text-transform:uppercase;cursor:pointer;transition:all .2s;
+}
+.nav-btn:hover{background:var(--gold-faint);border-color:var(--gold)}
+.back-link{font-family:'Barlow Condensed',sans-serif;font-size:.62rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--td);text-decoration:none;transition:color .2s}
+.back-link:hover{color:var(--gold)}
+
+/* ── PAGE LAYOUT ─────────────────────────────────── */
+.wrap{padding-top:62px;min-height:100vh;position:relative;z-index:1}
+
+.dash-head{
+  padding:2rem 1.8rem 1.6rem;
+  border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(21,37,64,.5) 0%,transparent 100%);
+}
+.dash-head-inner{max-width:1700px;margin:0 auto;display:flex;align-items:flex-end;justify-content:space-between;gap:2rem;flex-wrap:wrap}
+.eyebrow{font-family:'Barlow Condensed',sans-serif;font-size:.62rem;font-weight:600;letter-spacing:.3em;text-transform:uppercase;color:var(--gold-dim);display:flex;align-items:center;gap:10px;margin-bottom:.5rem}
+.eyebrow::before{content:'';display:block;width:18px;height:1px;background:var(--gold-dim)}
+h1{font-family:'Cormorant Garamond',serif;font-size:2.2rem;font-weight:300;line-height:1.1;color:var(--white)}
+h1 em{font-style:italic;color:var(--gold-light)}
+.dash-sub{font-size:.8rem;font-weight:300;color:var(--td);margin-top:.35rem}
+.api-tag{font-family:var(--mono);font-size:.68rem;color:var(--td);background:rgba(255,255,255,.04);border:1px solid var(--border);padding:6px 12px}
+.api-tag .on{color:var(--green)} .api-tag .off{color:var(--red)}
+
+/* -- TABS ------------------------------------------ */
+.tab-bar {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem 1.8rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--navy-mid);
+}
+.tab {
+  background: transparent;
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: .68rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--td);
+  cursor: pointer;
+  transition: all .2s;
+}
+.tab:hover {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+.tab.active {
+  color: var(--gold);
+  border-color: var(--gold);
+  background: var(--gold-faint);
+}
+
+/* ── KPI ROW ─────────────────────────────────────── */
+.kpi-row{padding:1.2rem 1.8rem;border-bottom:1px solid var(--border)}
+.kpi-inner{max-width:1700px;margin:0 auto;display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border:1px solid var(--border)}
+.kpi{background:var(--navy-card);padding:1.1rem 1.3rem;position:relative;overflow:hidden;transition:background .2s;cursor:default}
+.kpi:hover{background:var(--navy-light)}
+.kpi::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--gold);transform:scaleX(0);transform-origin:left;transition:transform .3s}
+.kpi:hover::after{transform:scaleX(1)}
+.kpi-lbl{font-family:'Barlow Condensed',sans-serif;font-size:.58rem;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--td);margin-bottom:.45rem}
+.kpi-val{font-family:'Cormorant Garamond',serif;font-size:2.1rem;font-weight:300;line-height:1;color:var(--gold);transition:color .3s}
+.kpi-val.g{color:var(--green)} .kpi-val.r{color:var(--red)} .kpi-val.b{color:var(--blue)} .kpi-val.p{color:var(--purple)}
+.kpi-sub{font-size:.62rem;font-weight:300;color:var(--td);margin-top:.25rem}
+
+/* ── SECTION HEADERS ─────────────────────────────── */
+.section-strip{
+  padding:.7rem 1.8rem;
+  border-bottom:1px solid var(--border);
+  background:rgba(255,255,255,.015);
+}
+.section-strip-inner{max-width:1700px;margin:0 auto;display:flex;align-items:center;gap:14px}
+.section-strip-label{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:.62rem;font-weight:700;letter-spacing:.3em;text-transform:uppercase;
+}
+.section-strip-label.local{color:var(--gold)}
+.section-strip-label.aws{color:var(--blue)}
+.strip-line{flex:1;height:1px;background:var(--border)}
+.strip-badge{
+  font-family:'Barlow Condensed',sans-serif;font-size:.58rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  padding:3px 10px;border-radius:2px;
+}
+.strip-badge.aws-tag{background:rgba(92,141,224,.1);color:var(--blue);border:1px solid rgba(92,141,224,.25)}
+.strip-badge.local-tag{background:rgba(200,169,110,.08);color:var(--gold);border:1px solid rgba(200,169,110,.2)}
+
+/* ── GRID ────────────────────────────────────────── */
+.grid{padding:1.4rem 1.8rem;max-width:1700px;margin:0 auto;display:grid;gap:1.2rem}
+.grid-2{grid-template-columns:1fr 1fr}
+.grid-3{grid-template-columns:1fr 1fr 1fr}
+.full{grid-column:1/-1}
+
+/* ── PANEL ───────────────────────────────────────── */
+.panel{background:var(--navy-card);border:1px solid var(--border);overflow:hidden}
+.ph{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.85rem 1.2rem;border-bottom:1px solid var(--border);
+  background:rgba(255,255,255,.02);
+}
+.pt{
+  font-family:'Barlow Condensed',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:7px;
+}
+.pt .dot{width:5px;height:5px;border-radius:50%;background:var(--gold)}
+.pt.blue-t{color:var(--blue)} .pt.blue-t .dot{background:var(--blue)}
+.pbadge{
+  font-family:var(--mono);font-size:.58rem;color:var(--td);
+  background:rgba(255,255,255,.04);border:1px solid var(--border);padding:2px 8px;border-radius:2px;
+}
+.pbadge.live{color:var(--green);border-color:rgba(76,175,130,.25)}
+.pbadge.aws-b{color:var(--blue);border-color:rgba(92,141,224,.25)}
+
+/* ── SCROLLABLE TABLES ───────────────────────────── */
+.tscroll{overflow-y:auto;max-height:400px}
+.tscroll::-webkit-scrollbar{width:3px}
+.tscroll::-webkit-scrollbar-thumb{background:rgba(200,169,110,.18);border-radius:2px}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:.7rem}
+thead th{
+  position:sticky;top:0;z-index:2;background:var(--navy-mid);
+  font-family:'Barlow Condensed',sans-serif;font-size:.57rem;font-weight:700;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--td);padding:7px 11px;text-align:left;
+  border-bottom:1px solid var(--border);
+}
+tbody tr{border-bottom:1px solid rgba(200,169,110,.04);transition:background .12s}
+tbody tr:hover{background:rgba(200,169,110,.04)}
+tbody tr.new{animation:flash .65s ease}
+@keyframes flash{from{background:rgba(200,169,110,.13)}to{background:transparent}}
+td{padding:6px 11px;color:var(--tl);vertical-align:middle}
+td.dim{color:var(--td);font-size:.62rem}
+td.ip{color:#8fc3e8}
+td.port{color:var(--gold-dim)}
+.pbg{
+  display:inline-block;font-family:'Barlow Condensed',sans-serif;font-size:.58rem;
+  font-weight:700;letter-spacing:.1em;padding:2px 7px;border-radius:2px;
+}
+.pbg.TCP{background:rgba(92,141,224,.14);color:var(--blue);border:1px solid rgba(92,141,224,.28)}
+.pbg.UDP{background:rgba(76,175,130,.14);color:var(--green);border:1px solid rgba(76,175,130,.28)}
+.pbg.OTHER{background:rgba(224,152,64,.14);color:var(--amber);border:1px solid rgba(224,152,64,.28)}
+
+/* ── SEVERITY BADGES ─────────────────────────────── */
+.sev{
+  display:inline-block;font-family:'Barlow Condensed',sans-serif;font-size:.58rem;
+  font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:2px 8px;border-radius:2px;
+}
+.sev.CRITICAL{background:rgba(224,92,92,.18);color:var(--red);border:1px solid rgba(224,92,92,.35)}
+.sev.HIGH    {background:rgba(224,92,92,.1); color:#e88;     border:1px solid rgba(224,92,92,.2)}
+.sev.MEDIUM  {background:rgba(224,152,64,.14);color:var(--amber);border:1px solid rgba(224,152,64,.3)}
+.sev.LOW     {background:rgba(76,175,130,.12);color:var(--green);border:1px solid rgba(76,175,130,.25)}
+.sev.INFO    {background:rgba(92,141,224,.12);color:var(--blue); border:1px solid rgba(92,141,224,.25)}
+
+/* ── BAR LISTS ───────────────────────────────────── */
+.bar-list{padding:1.1rem 1.2rem;display:flex;flex-direction:column;gap:9px}
+.bi-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.bi-label{font-family:var(--mono);font-size:.7rem;color:var(--tl)}
+.bi-count{font-family:var(--mono);font-size:.65rem;color:var(--gold-dim)}
+.bar-track{height:2px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--gold-dim),var(--gold));border-radius:2px;transition:width .6s ease}
+.bar-fill.blue-bar{background:linear-gradient(90deg,#3a6ab8,var(--blue))}
+
+/* ── PROTO DONUT ─────────────────────────────────── */
+.donut-wrap{padding:1.2rem;display:flex;align-items:center;gap:1.6rem;flex-wrap:wrap}
+.donut-svg{position:relative;flex-shrink:0}
+.donut-center{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  text-align:center;pointer-events:none;
+}
+.donut-total{font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:300;color:var(--gold);line-height:1}
+.donut-sub{font-family:'Barlow Condensed',sans-serif;font-size:.55rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--td)}
+.legend{display:flex;flex-direction:column;gap:8px;flex:1;min-width:120px}
+.leg-item{display:flex;align-items:center;gap:8px}
+.leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.leg-label{font-family:'Barlow Condensed',sans-serif;font-size:.65rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--tl);flex:1}
+.leg-val{font-family:var(--mono);font-size:.65rem;color:var(--td)}
+
+/* ── AWS PIPELINE FLOW ───────────────────────────── */
+.pipeline{padding:1.2rem 1.4rem;display:flex;align-items:center;gap:0;overflow-x:auto;padding-bottom:1.4rem}
+.pip-node{
+  background:var(--navy-mid);border:1px solid var(--border);
+  padding:.7rem 1rem;min-width:140px;flex-shrink:0;position:relative;
+  transition:border-color .2s;
+}
+.pip-node:hover{border-color:rgba(200,169,110,.35)}
+.pip-node-icon{font-size:1.1rem;margin-bottom:.35rem}
+.pip-node-label{font-family:'Barlow Condensed',sans-serif;font-size:.62rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:.2rem}
+.pip-node-sub{font-size:.65rem;font-weight:300;color:var(--td);line-height:1.4}
+.pip-arrow{color:rgba(200,169,110,.4);font-size:1rem;padding:0 6px;flex-shrink:0;align-self:center}
+.pip-node.aws-node{border-color:rgba(92,141,224,.25)}
+.pip-node.aws-node .pip-node-label{color:var(--blue)}
+
+/* ── EMPTY / LOADING STATES ──────────────────────── */
+.empty-state{
+  padding:3rem;text-align:center;
+  font-family:'Barlow Condensed',sans-serif;font-size:.72rem;font-weight:600;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--td);
+}
+.loading{animation:ldpulse 1.2s ease-in-out infinite}
+@keyframes ldpulse{0%,100%{opacity:.4}50%{opacity:1}}
+
+/* ── S3 KEY CHIP ─────────────────────────────────── */
+.s3key{
+  font-family:var(--mono);font-size:.55rem;color:var(--td);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;
+}
+
+/* ── TOAST ───────────────────────────────────────── */
+#toast{
+  position:fixed;bottom:2rem;right:2rem;z-index:999;
+  background:var(--navy-mid);border:1px solid var(--border);border-left:3px solid var(--gold);
+  padding:.8rem 1.2rem;font-size:.78rem;font-weight:300;color:var(--tl);
+  opacity:0;transition:opacity .3s;pointer-events:none;max-width:340px;
+}
+#toast.show{opacity:1}
+
+/* ── FOOTER ──────────────────────────────────────── */
+footer{
+  padding:1.4rem 1.8rem;border-top:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;
+  font-size:.7rem;font-weight:300;color:var(--td);
+}
+footer a{color:var(--gold-dim);text-decoration:none}
+footer a:hover{color:var(--gold)}
+
+/* ── LOG SEARCH UI ───────────────────────────────────────── */
+.logsearch-wrap {
+  padding: 1.4rem 1.8rem;
+  max-width: 1700px;
+  margin: 0 auto;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.2rem;
+  padding: 1.2rem;
+}
+
+.filter-item label {
+  display: block;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+  margin-bottom: .35rem;
+}
+
+.filter-item input,
+.filter-item select {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--navy-card);
+  border: 1px solid var(--border);
+  color: var(--tl);
+  font-family: var(--mono);
+  font-size: .75rem;
+}
+
+.filter-item.full {
+  grid-column: 1 / -1;
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-left">
+    <a class="nav-logo" href="index.html">
+      <div class="logo-ring"></div>
+      <span class="brand">Net<span>Guard</span></span>
+    </a>
+    <div class="sep"></div>
+    <span class="page-label">Live Dashboard</span>
+  </div>
+  <div class="nav-right">
+    <div class="status-pill">
+      <div class="sdot" id="localDot"></div>
+      <span id="localStatus">LOCAL</span>
+    </div>
+    <div class="status-pill">
+      <div class="sdot warn" id="awsDot"></div>
+      <span id="awsStatus">AWS</span>
+    </div>
+    <span id="clock">--:--:--</span>
+    <button class="nav-btn" onclick="refreshAll()">↺ Refresh</button>
+    <a class="back-link" href="../Frontend/index.html">← Back to Site</a>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="dash-head">
+    <div class="dash-head-inner">
+      <div>
+        <div class="eyebrow">Real-Time Intelligence</div>
+        <h1>Network <em>Dashboard</em></h1>
+        <p class="dash-sub">Live packet capture · Metadata extraction · Local rules engine · AWS cloud pipeline</p>
+      </div>
+      <div class="api-tag">
+        API: <span class="on" id="apiStatusText">http://localhost:5000</span>
+        &nbsp;|&nbsp; Bucket: <span id="bucketLabel">monitoring-pcap-storage</span>
+        &nbsp;|&nbsp; AWS: <span id="awsApiLabel" class="off">checking…</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tab-bar">
+    <button class="tab active" data-tab="dashboard">Dashboard</button>
+    <button class="tab" data-tab="logsearch">Log Search</button>
+    <button class="tab" data-tab="timeline">Event Timeline</button>
+  </div>
+
+  <div id="dashboard" class="tab-content" style="display:block;">
+
+  <!-- KPI ROW -->
+  <div class="kpi-row">
+    <div class="kpi-inner">
+      <div class="kpi"><div class="kpi-lbl">Total Packets</div><div class="kpi-val" id="kTotal">—</div><div class="kpi-sub">captured locally</div></div>
+      <div class="kpi"><div class="kpi-lbl">TCP</div><div class="kpi-val b" id="kTCP">—</div><div class="kpi-sub">packets</div></div>
+      <div class="kpi"><div class="kpi-lbl">UDP</div><div class="kpi-val g" id="kUDP">—</div><div class="kpi-sub">packets</div></div>
+      <div class="kpi"><div class="kpi-lbl">Other</div><div class="kpi-val" id="kOther">—</div><div class="kpi-sub">protocols</div></div>
+      <div class="kpi"><div class="kpi-lbl">Unique Src IPs</div><div class="kpi-val" id="kSrc">—</div><div class="kpi-sub">observed</div></div>
+      <div class="kpi"><div class="kpi-lbl">Local Alerts</div><div class="kpi-val r" id="kEvents">—</div><div class="kpi-sub">rules fired</div></div>
+      <div class="kpi"><div class="kpi-lbl">Cloud Alerts</div><div class="kpi-val p" id="kAwsAlerts">—</div><div class="kpi-sub">from AWS S3</div></div>
+    </div>
+  </div>
+
+  <!-- ══ LOCAL SECTION ══ -->
+  <div class="section-strip">
+    <div class="section-strip-inner">
+      <span class="section-strip-label local">Local Pipeline</span>
+      <div class="strip-line"></div>
+      <span class="strip-badge local-tag">capture_packet · Metadata_extraction · rules_parser · SQLite</span>
+    </div>
+  </div>
+
+  <div class="grid grid-2" style="padding-bottom:0">
+
+    <!-- Packet Table -->
+    <div class="panel full">
+      <div class="ph">
+        <div class="pt"><div class="dot"></div>Live Packet Feed</div>
+        <span class="pbadge live" id="packetCount">0 packets</span>
+      </div>
+      <div class="tscroll" id="packetTableWrap">
+        <table>
+          <thead><tr>
+            <th>#</th><th>Timestamp</th><th>Src IP</th><th>Dst IP</th>
+            <th>Src Port</th><th>Dst Port</th><th>Protocol</th>
+          </tr></thead>
+          <tbody id="packetBody">
+            <tr><td colspan="7"><div class="empty-state loading">Waiting for packets…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Protocol Donut -->
+    <div class="panel">
+      <div class="ph">
+        <div class="pt"><div class="dot"></div>Protocol Breakdown</div>
+        <span class="pbadge">live</span>
+      </div>
+      <div class="donut-wrap">
+        <div class="donut-svg">
+          <svg id="donutSvg" width="130" height="130" viewBox="0 0 130 130"></svg>
+          <div class="donut-center">
+            <div class="donut-total" id="donutTotal">0</div>
+            <div class="donut-sub">total</div>
+          </div>
+        </div>
+        <div class="legend">
+          <div class="leg-item"><div class="leg-dot" style="background:var(--blue)"></div><span class="leg-label">TCP</span><span class="leg-val" id="legTCP">0</span></div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div><span class="leg-label">UDP</span><span class="leg-val" id="legUDP">0</span></div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--amber)"></div><span class="leg-label">Other</span><span class="leg-val" id="legOther">0</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Src IPs -->
+    <div class="panel">
+      <div class="ph">
+        <div class="pt"><div class="dot"></div>Top Source IPs</div>
+        <span class="pbadge">metadata</span>
+      </div>
+      <div class="bar-list" id="topIPs"></div>
+    </div>
+
+    <!-- Top Dst Ports -->
+    <div class="panel">
+      <div class="ph">
+        <div class="pt"><div class="dot"></div>Top Destination Ports</div>
+        <span class="pbadge">metadata</span>
+      </div>
+      <div class="bar-list" id="topPorts"></div>
+    </div>
+
+    <!-- Local Events -->
+    <div class="panel full">
+      <div class="ph">
+        <div class="pt"><div class="dot"></div>Local Rules Engine — Event Log</div>
+        <span class="pbadge live" id="localEventCount">0 events</span>
+      </div>
+      <div class="tscroll">
+        <table>
+          <thead><tr>
+            <th>Timestamp</th><th>Rule ID</th><th>Severity</th>
+            <th>Description</th><th>Src IP</th><th>Dst IP</th><th>Proto</th><th>Tags</th>
+          </tr></thead>
+          <tbody id="localEventBody">
+            <tr><td colspan="8"><div class="empty-state">No local rule events yet</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Loaded YAML Rules -->
+    <div class="panel full">
+      <div class="ph">
+        <div class="pt"><div class="dot"></div>Loaded YAML Detection Rules</div>
+        <span class="pbadge" id="rulesCount">0 rules</span>
+      </div>
+      <div class="tscroll">
+        <table>
+          <thead><tr>
+            <th>Rule ID</th><th>Severity</th><th>Description</th>
+            <th>Conditions</th><th>Window</th><th>Tags</th>
+          </tr></thead>
+          <tbody id="rulesBody">
+            <tr><td colspan="6"><div class="empty-state">No rules loaded — check ./rules directory</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /grid local -->
+
+  <!-- ══ AWS SECTION ══ -->
+  <div class="section-strip" style="margin-top:1rem">
+    <div class="section-strip-inner">
+      <span class="section-strip-label aws">AWS Cloud Pipeline</span>
+      <div class="strip-line"></div>
+      <span class="strip-badge aws-tag">API Gateway → ingest_metadata λ → S3 → rules_engine λ → alerts/ → alert_gen λ → SNS</span>
+    </div>
+  </div>
+
+  <!-- Pipeline diagram -->
+  <div class="grid" style="grid-template-columns:1fr;padding-bottom:0">
+    <div class="panel">
+      <div class="ph">
+        <div class="pt blue-t"><div class="dot"></div>Pipeline Architecture</div>
+        <span class="pbadge aws-b">us-east-2</span>
+      </div>
+      <div class="pipeline">
+        <div class="pip-node">
+          <div class="pip-node-icon">🖥️</div>
+          <div class="pip-node-label">Host Machine</div>
+          <div class="pip-node-sub">capture_packet.py<br>Metadata_extraction.py<br>forward_to_cloud.py</div>
+        </div>
+        <div class="pip-arrow">→</div>
+        <div class="pip-node aws-node">
+          <div class="pip-node-icon">🌐</div>
+          <div class="pip-node-label">API Gateway</div>
+          <div class="pip-node-sub">POST /ingest<br>HTTPS · TLS 1.3<br>Retry × 3</div>
+        </div>
+        <div class="pip-arrow">→</div>
+        <div class="pip-node aws-node">
+          <div class="pip-node-icon">λ</div>
+          <div class="pip-node-label">ingest_metadata</div>
+          <div class="pip-node-sub">Normalises timestamp<br>Partitions by date<br>AES-256 · S3</div>
+        </div>
+        <div class="pip-arrow">→</div>
+        <div class="pip-node aws-node">
+          <div class="pip-node-icon">🪣</div>
+          <div class="pip-node-label">S3 — Ingested Logs</div>
+          <div class="pip-node-sub">ingested/logs/<br>year/month/day/hour/<br>rule_id/severity/</div>
+        </div>
+        <div class="pip-arrow">→</div>
+        <div class="pip-node aws-node">
+          <div class="pip-node-icon">λ</div>
+          <div class="pip-node-label">rules_engine</div>
+          <div class="pip-node-sub">YAML rules from S3<br>DynamoDB state<br>30 s cooldown</div>
+        </div>
+        <div class="pip-arrow">→</div>
+        <div class="pip-node aws-node">
+          <div class="pip-node-icon">🚨</div>
+          <div class="pip-node-label">S3 — Alerts</div>
+          <div class="pip-node-sub">alerts/<br>Per-rule JSON files<br>S3 event trigger</div>
+        </div>
+        <div class="pip-arrow">→</div>
+        <div class="pip-node aws-node">
+          <div class="pip-node-icon">λ</div>
+          <div class="pip-node-label">alert_gen</div>
+          <div class="pip-node-sub">Reads alert JSON<br>Formats email<br>SNS publish</div>
+        </div>
+        <div class="pip-arrow">→</div>
+        <div class="pip-node aws-node">
+          <div class="pip-node-icon">📧</div>
+          <div class="pip-node-label">SNS → Email</div>
+          <div class="pip-node-sub">Subscriber email<br>Rule + src_ip<br>Full alert JSON</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-3" style="padding-top:0.8rem;padding-bottom:0">
+
+    <!-- AWS KPIs -->
+    <div class="panel">
+      <div class="ph">
+        <div class="pt blue-t"><div class="dot"></div>AWS Alert Severity</div>
+        <span class="pbadge aws-b" id="awsTotalAlerts">— alerts</span>
+      </div>
+      <div class="bar-list" id="awsSevBars"></div>
+    </div>
+
+    <!-- Top Firing Rules (AWS) -->
+    <div class="panel">
+      <div class="ph">
+        <div class="pt blue-t"><div class="dot"></div>Top Firing Rules (Cloud)</div>
+        <span class="pbadge aws-b">from S3 alerts/</span>
+      </div>
+      <div class="bar-list" id="awsTopRules"></div>
+    </div>
+
+    <!-- Ingested count -->
+    <div class="panel">
+      <div class="ph">
+        <div class="pt blue-t"><div class="dot"></div>S3 Storage Stats</div>
+        <span class="pbadge aws-b">monitoring-pcap-storage</span>
+      </div>
+      <div class="bar-list">
+        <div style="padding:.2rem 0">
+          <div class="bi-header"><span class="bi-label">Ingested Log Objects</span><span class="bi-count" id="awsIngestedCount">—</span></div>
+          <div class="bar-track"><div class="bar-fill blue-bar" id="awsIngestedBar" style="width:0%"></div></div>
+        </div>
+        <div style="padding:.2rem 0">
+          <div class="bi-header"><span class="bi-label">Alert Objects</span><span class="bi-count" id="awsAlertCount">—</span></div>
+          <div class="bar-track"><div class="bar-fill" id="awsAlertBar" style="width:0%"></div></div>
+        </div>
+        <div style="margin-top:.8rem;font-size:.68rem;font-weight:300;color:var(--td);line-height:1.6">
+          Bucket: <span style="color:var(--blue);font-family:var(--mono)">monitoring-pcap-storage</span><br>
+          Region: <span style="color:var(--blue);font-family:var(--mono)">us-east-2</span><br>
+          Encryption: <span style="color:var(--green);font-family:var(--mono)">AES-256</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- AWS Alerts Table -->
+    <div class="panel full">
+      <div class="ph">
+        <div class="pt blue-t"><div class="dot"></div>Cloud Alerts — from S3 alerts/</div>
+        <span class="pbadge aws-b" id="awsAlertTableCount">0 alerts</span>
+      </div>
+      <div class="tscroll">
+        <table>
+          <thead><tr>
+            <th>Timestamp</th><th>Rule</th><th>Severity</th>
+            <th>Src IP</th><th>Dst IP</th><th>Dst Port</th><th>Description</th><th>S3 Key</th>
+          </tr></thead>
+          <tbody id="awsAlertBody">
+            <tr><td colspan="8"><div class="empty-state" id="awsAlertEmpty">Connecting to AWS…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- AWS Ingested Logs Table -->
+    <div class="panel full">
+      <div class="ph">
+        <div class="pt blue-t"><div class="dot"></div>Ingested Packet Logs — from S3 ingested/logs/</div>
+        <span class="pbadge aws-b" id="awsIngestedTableCount">0 records</span>
+      </div>
+      <div class="tscroll">
+        <table>
+          <thead><tr>
+            <th>Timestamp</th><th>Event Type</th><th>Severity</th><th>Rule ID</th>
+            <th>Src IP</th><th>Dst IP</th><th>Protocol</th><th>S3 Key</th>
+          </tr></thead>
+          <tbody id="awsIngestedBody">
+            <tr><td colspan="8"><div class="empty-state" id="awsIngestEmpty">Connecting to AWS…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /grid aws -->
+
+  <footer style="margin-top:1.4rem">
+    <span>© 2026 NetGuard Analytics · Dashboard v2.0</span>
+    <span>API: <a href="http://localhost:5000/api/stats" target="_blank">localhost:5000</a> · Auto-refresh every 5 s</span>
+  </footer>
+
+  </div><!-- /dashboard -->
+
+  <div id="logsearch" class="tab-content" style="display:none;">
+    <div class="logsearch-wrap">
+
+      <!-- FILTER BAR -->
+      <div class="logsearch-filters panel">
+        <div class="ph">
+          <div class="pt"><span class="dot"></span> Log Search</div>
+          <span class="pbadge">LOCAL</span>
+        </div>
+    
+        <div class="filter-grid">
+          <div class="filter-item">
+            <label>Source IP</label>
+            <input id="fSrcIp" type="text" placeholder="e.g. 192.168.1.10">
+          </div>
+    
+          <div class="filter-item">
+            <label>Destination IP</label>
+            <input id="fDstIp" type="text" placeholder="e.g. 10.0.0.5">
+          </div>
+    
+          <div class="filter-item">
+            <label>Protocol</label>
+            <select id="fProto">
+              <option value="">Any</option>
+              <option value="TCP">TCP</option>
+              <option value="UDP">UDP</option>
+              <option value="OTHER">OTHER</option>
+            </select>
+          </div>
+    
+          <div class="filter-item">
+            <label>Source Port</label>
+            <input id="fSrcPort" type="number" min="0" max="65535" placeholder="Any">
+          </div>
+    
+          <div class="filter-item">
+            <label>Destination Port</label>
+            <input id="fDstPort" type="number" min="0" max="65535" placeholder="Any">
+          </div>
+    
+          <div class="filter-item">
+            <label>Time Range</label>
+            <select id="fTime">
+              <option value="">Any</option>
+              <option value="5m">Last 5 minutes</option>
+              <option value="15m">Last 15 minutes</option>
+              <option value="1h">Last hour</option>
+              <option value="24h">Last 24 hours</option>
+            </select>
+          </div>
+    
+          <div class="filter-item full">
+            <button id="runSearch" class="nav-btn" style="width:100%;">Run Search</button>
+          </div>
+        </div>
+      </div>
+    
+      <!-- RESULTS PANEL -->
+      <div class="panel" style="margin-top:1.4rem;">
+        <div class="ph">
+          <div class="pt blue-t"><span class="dot"></span> Results</div>
+          <span id="logResultCount" class="pbadge aws-b">0 results</span>
+        </div>
+    
+        <div class="tscroll" style="max-height:500px;">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Timestamp</th>
+                <th>Src IP</th>
+                <th>Dst IP</th>
+                <th>Src Port</th>
+                <th>Dst Port</th>
+                <th>Protocol</th>
+              </tr>
+            </thead>
+            <tbody id="logResultsBody">
+              <tr><td colspan="7"><div class="empty-state">Run a search to begin</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    
+    </div>
+  </div>
+  
+  <div id="timeline" class="tab-content" style="display:none;">
+    <!-- Timeline UI goes here -->
+  </div>
+
+</div><!-- /wrap -->
+
+<div id="toast"></div>
+
+<script>
+const API = 'http://localhost:5000';
+let prevPacketIds = new Set();
+let prevEventIds  = new Set();
+
+// ── Clock ────────────────────────────────────────────────────────────────────
+function tickClock(){
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toTimeString().slice(0,8) + ' UTC' + (now.getTimezoneOffset()===0?'':
+      (now.getTimezoneOffset()<0?'+':'-')+String(Math.abs(now.getTimezoneOffset()/60)).padStart(2,'0')+'00');
+}
+setInterval(tickClock,1000); tickClock();
+
+// ── Toast ────────────────────────────────────────────────────────────────────
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ── Donut chart ──────────────────────────────────────────────────────────────
+function drawDonut(tcp,udp,other){
+  const svg   = document.getElementById('donutSvg');
+  const total = tcp+udp+other || 1;
+  const cx=65, cy=65, r=50, sw=16;
+  const circumference = 2*Math.PI*r;
+
+  const slices = [
+    {val:tcp,   color:'var(--blue)'},
+    {val:udp,   color:'var(--green)'},
+    {val:other, color:'var(--amber)'},
+  ];
+
+  svg.innerHTML = '';
+  // background ring
+  const bg = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  Object.assign(bg, {}); bg.setAttribute('cx',cx); bg.setAttribute('cy',cy);
+  bg.setAttribute('r',r); bg.setAttribute('fill','none');
+  bg.setAttribute('stroke','rgba(255,255,255,0.05)'); bg.setAttribute('stroke-width',sw);
+  svg.appendChild(bg);
+
+  let offset = 0;
+  slices.forEach(s=>{
+    if(!s.val) return;
+    const frac  = s.val/total;
+    const dash  = frac*circumference;
+    const gap   = circumference - dash;
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',cx); c.setAttribute('cy',cy); c.setAttribute('r',r);
+    c.setAttribute('fill','none'); c.setAttribute('stroke',s.color);
+    c.setAttribute('stroke-width',sw);
+    c.setAttribute('stroke-dasharray',`${dash} ${gap}`);
+    c.setAttribute('stroke-dashoffset', -offset*circumference);
+    c.setAttribute('transform',`rotate(-90 ${cx} ${cy})`);
+    c.style.transition='stroke-dasharray .6s ease';
+    svg.appendChild(c);
+    offset += frac;
+  });
+
+  document.getElementById('donutTotal').textContent = (tcp+udp+other).toLocaleString();
+  document.getElementById('legTCP').textContent   = tcp.toLocaleString();
+  document.getElementById('legUDP').textContent   = udp.toLocaleString();
+  document.getElementById('legOther').textContent = other.toLocaleString();
+}
+
+// ── Bar list helpers ─────────────────────────────────────────────────────────
+function renderBars(containerId, items, labelKey, countKey, isBlue=false){
+  const el = document.getElementById(containerId);
+  if(!items||!items.length){ el.innerHTML='<div class="empty-state">No data yet</div>'; return; }
+  const max = Math.max(...items.map(i=>i[countKey]));
+  el.innerHTML = items.map(item=>`
+    <div>
+      <div class="bi-header">
+        <span class="bi-label">${item[labelKey]??'—'}</span>
+        <span class="bi-count">${item[countKey].toLocaleString()}</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill ${isBlue?'blue-bar':''}" style="width:${(item[countKey]/max*100).toFixed(1)}%"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Severity badge ────────────────────────────────────────────────────────────
+function sevBadge(s){
+  const k = String(s||'INFO').toUpperCase();
+  return `<span class="sev ${k}">${k}</span>`;
+}
+function protoBadge(p){
+  const k = String(p||'OTHER').toUpperCase();
+  return `<span class="pbg ${['TCP','UDP'].includes(k)?k:'OTHER'}">${k}</span>`;
+}
+
+// ── Fetch local stats ─────────────────────────────────────────────────────────
+async function fetchStats(){
+  try{
+    const res = await fetch(`${API}/api/stats`);
+    const d   = await res.json();
+
+    document.getElementById('kTotal').textContent  = (d.total||0).toLocaleString();
+    document.getElementById('kTCP').textContent    = (d.tcp||0).toLocaleString();
+    document.getElementById('kUDP').textContent    = (d.udp||0).toLocaleString();
+    document.getElementById('kOther').textContent  = (d.other||0).toLocaleString();
+    document.getElementById('kSrc').textContent    = (d.unique_src||0).toLocaleString();
+    document.getElementById('kEvents').textContent = (d.local_events||0).toLocaleString();
+
+    // AWS available indicator
+    const awsOk = d.aws_available;
+    document.getElementById('awsApiLabel').textContent  = awsOk?'connected':'no credentials';
+    document.getElementById('awsApiLabel').className    = awsOk?'on':'off';
+    document.getElementById('awsDot').className         = `sdot ${awsOk?'':'warn'}`;
+    document.getElementById('awsStatus').textContent    = awsOk?'AWS LIVE':'AWS OFFLINE';
+
+    drawDonut(d.tcp||0, d.udp||0, d.other||0);
+    renderBars('topIPs',   d.top_ips,   'ip',   'count');
+    renderBars('topPorts', d.top_ports, 'port', 'count');
+
+    // Local online
+    document.getElementById('localDot').className         = 'sdot';
+    document.getElementById('localStatus').textContent    = 'LOCAL LIVE';
+  }catch(e){
+    document.getElementById('localDot').className      = 'sdot off';
+    document.getElementById('localStatus').textContent = 'API OFFLINE';
+    document.getElementById('apiStatusText').textContent= 'localhost:5000 — not reachable';
+    document.getElementById('apiStatusText').className  = 'off';
+  }
+}
+
+// ── Fetch packets ─────────────────────────────────────────────────────────────
+async function fetchPackets(){
+  try{
+    const res = await fetch(`${API}/api/packets`);
+    const packets = await res.json();
+    const tbody = document.getElementById('packetBody');
+    document.getElementById('packetCount').textContent = `${packets.length} packets`;
+    if(!packets.length){
+      tbody.innerHTML='<tr><td colspan="7"><div class="empty-state loading">Waiting for traffic…</div></td></tr>';
+      return;
+    }
+    const newIds = new Set(packets.map(p=>p.id));
+    tbody.innerHTML = packets.slice(0,200).map(p=>{
+      const isNew = !prevPacketIds.has(p.id);
+      return `<tr class="${isNew?'new':''}">
+        <td class="dim">${p.id}</td>
+        <td class="dim">${p.timestamp||'—'}</td>
+        <td class="ip">${p.src_ip||'—'}</td>
+        <td class="ip">${p.dst_ip||'—'}</td>
+        <td class="port">${p.src_port??'—'}</td>
+        <td class="port">${p.dst_port??'—'}</td>
+        <td>${protoBadge(p.protocol)}</td>
+      </tr>`;
+    }).join('');
+    prevPacketIds = newIds;
+  }catch(e){}
+}
+
+// ── Fetch local events ────────────────────────────────────────────────────────
+async function fetchLocalEvents(){
+  try{
+    const res = await fetch(`${API}/api/events/local`);
+    const events = await res.json();
+    const tbody = document.getElementById('localEventBody');
+    document.getElementById('localEventCount').textContent = `${events.length} events`;
+    if(!events.length){
+      tbody.innerHTML='<tr><td colspan="8"><div class="empty-state">No events — rules may not have matched yet</div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = events.slice(0,100).map(e=>`
+      <tr>
+        <td class="dim">${e.timestamp||'—'}</td>
+        <td style="font-family:var(--mono);font-size:.67rem;color:var(--gold)">${e.rule_id||'—'}</td>
+        <td>${sevBadge(e.severity)}</td>
+        <td style="font-size:.75rem;font-weight:300;color:var(--tl)">${e.description||'—'}</td>
+        <td class="ip">${e.metadata?.src_ip||'—'}</td>
+        <td class="ip">${e.metadata?.dst_ip||'—'}</td>
+        <td>${protoBadge(e.metadata?.protocol)}</td>
+        <td class="dim">${(e.tags||[]).join(', ')||'—'}</td>
+      </tr>
+    `).join('');
+  }catch(e){}
+}
+
+// ── Fetch YAML rules ──────────────────────────────────────────────────────────
+async function fetchRules(){
+  try{
+    const res = await fetch(`${API}/api/rules`);
+    const rules = await res.json();
+    document.getElementById('rulesCount').textContent = `${rules.length} rules`;
+    const tbody = document.getElementById('rulesBody');
+    if(!rules.length||rules.error){
+      tbody.innerHTML='<tr><td colspan="6"><div class="empty-state">No rules found — add YAML files to ./rules/</div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = rules.map(r=>`
+      <tr>
+        <td style="font-family:var(--mono);font-size:.67rem;color:var(--gold)">${r.id}</td>
+        <td>${sevBadge(r.severity)}</td>
+        <td style="font-size:.75rem;font-weight:300;color:var(--tl)">${r.description}</td>
+        <td style="font-family:var(--mono);font-size:.62rem;color:var(--td)">${(r.conditions||[]).map(c=>`${c.field} ${c.operator} ${c.value}`).join('<br>')}</td>
+        <td class="dim">${r.window??'—'} s</td>
+        <td class="dim">${(r.tags||[]).join(', ')||'—'}</td>
+      </tr>
+    `).join('');
+  }catch(e){}
+}
+
+// ── Fetch AWS stats ───────────────────────────────────────────────────────────
+async function fetchAwsStats(){
+  try{
+    const res = await fetch(`${API}/api/aws/stats`);
+    const d   = await res.json();
+
+    document.getElementById('kAwsAlerts').textContent       = (d.total_alerts||0).toLocaleString();
+    document.getElementById('awsTotalAlerts').textContent   = `${d.total_alerts||0} alerts`;
+    document.getElementById('awsIngestedCount').textContent = (d.total_ingested||0).toLocaleString();
+    document.getElementById('awsAlertCount').textContent    = (d.total_alerts||0).toLocaleString();
+
+    const maxSA = Math.max(...Object.values(d.severity||{}),1);
+    const sevOrder = ['CRITICAL','HIGH','MEDIUM','LOW','INFO'];
+    const sevColors = {CRITICAL:'var(--red)',HIGH:'#e88',MEDIUM:'var(--amber)',LOW:'var(--green)',INFO:'var(--blue)'};
+    document.getElementById('awsSevBars').innerHTML = sevOrder.map(s=>{
+      const c = (d.severity||{})[s]||0;
+      return `<div>
+        <div class="bi-header">
+          <span class="bi-label" style="color:${sevColors[s]}">${s}</span>
+          <span class="bi-count">${c}</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${(c/maxSA*100).toFixed(1)}%;background:${sevColors[s]}"></div>
+        </div>
+      </div>`;
+    }).join('');
+
+    const topRules = d.top_rules||[];
+    renderBars('awsTopRules', topRules, 'rule', 'count', true);
+
+    const maxVal = Math.max(d.total_ingested||0, d.total_alerts||0, 1);
+    document.getElementById('awsIngestedBar').style.width = `${((d.total_ingested||0)/maxVal*100).toFixed(1)}%`;
+    document.getElementById('awsAlertBar').style.width    = `${((d.total_alerts||0)/maxVal*100).toFixed(1)}%`;
+  }catch(e){
+    document.getElementById('awsSevBars').innerHTML='<div class="empty-state">AWS not reachable</div>';
+  }
+}
+
+// ── Fetch AWS alerts ──────────────────────────────────────────────────────────
+async function fetchAwsAlerts(){
+  try{
+    const res    = await fetch(`${API}/api/aws/alerts`);
+    const alerts = await res.json();
+    const tbody  = document.getElementById('awsAlertBody');
+    document.getElementById('awsAlertTableCount').textContent = `${alerts.length} alerts`;
+    if(!alerts.length){
+      tbody.innerHTML=`<tr><td colspan="8"><div class="empty-state" id="awsAlertEmpty">No alerts in S3 yet</div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = alerts.slice(0,100).map(a=>`
+      <tr>
+        <td class="dim">${a.timestamp||'—'}</td>
+        <td style="font-family:var(--mono);font-size:.67rem;color:var(--blue)">${a.rule||'—'}</td>
+        <td>${sevBadge(a.severity)}</td>
+        <td class="ip">${a.src_ip||'—'}</td>
+        <td class="ip">${a.dst_ip||'—'}</td>
+        <td class="port">${a.dst_port||'—'}</td>
+        <td style="font-size:.72rem;font-weight:300;color:var(--tl)">${a.description||'—'}</td>
+        <td><div class="s3key" title="${a._s3_key||''}">${a._s3_key||'—'}</div></td>
+      </tr>
+    `).join('');
+  }catch(e){
+    document.getElementById('awsAlertBody').innerHTML=
+      `<tr><td colspan="8"><div class="empty-state">AWS unavailable — ensure credentials are set</div></td></tr>`;
+  }
+}
+
+// ── Fetch AWS ingested ────────────────────────────────────────────────────────
+async function fetchAwsIngested(){
+  try{
+    const res     = await fetch(`${API}/api/aws/ingested`);
+    const records = await res.json();
+    const tbody   = document.getElementById('awsIngestedBody');
+    document.getElementById('awsIngestedTableCount').textContent = `${records.length} records`;
+    if(!records.length){
+      tbody.innerHTML=`<tr><td colspan="8"><div class="empty-state">No ingested logs in S3 yet</div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = records.slice(0,100).map(r=>{
+      const orig = r.original||{};
+      return `<tr>
+        <td class="dim">${r.timestamp||orig.timestamp||'—'}</td>
+        <td style="font-family:var(--mono);font-size:.65rem;color:var(--blue)">${r.event_type||'metadata'}</td>
+        <td>${sevBadge(r.severity||'INFO')}</td>
+        <td style="font-family:var(--mono);font-size:.65rem;color:var(--gold)">${r.rule_id||'NONE'}</td>
+        <td class="ip">${orig.src_ip||'—'}</td>
+        <td class="ip">${orig.dst_ip||'—'}</td>
+        <td>${protoBadge(orig.protocol)}</td>
+        <td><div class="s3key" title="${r._s3_key||''}">${r._s3_key||'—'}</div></td>
+      </tr>`;
+    }).join('');
+  }catch(e){
+    document.getElementById('awsIngestedBody').innerHTML=
+      `<tr><td colspan="8"><div class="empty-state">AWS unavailable — ensure credentials are set</div></td></tr>`;
+  }
+}
+
+// ── Tab Switching ───────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+
+    // Update active button
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    // Show the selected tab content
+    const tab = btn.dataset.tab;
+    document.querySelectorAll('.tab-content').forEach(sec => {
+      sec.style.display = sec.id === tab ? 'block' : 'none';
+    });
+  });
+});
+
+// ── Log Search ───────────────────────────────────────────────
+document.getElementById('runSearch').addEventListener('click', async () => {
+  const params = {
+    src_ip:   document.getElementById('fSrcIp').value.trim(),
+    dst_ip:   document.getElementById('fDstIp').value.trim(),
+    protocol: document.getElementById('fProto').value,
+    src_port: document.getElementById('fSrcPort').value,
+    dst_port: document.getElementById('fDstPort').value,
+    time:     document.getElementById('fTime').value
+  };
+
+  const qs = Object.entries(params)
+    .filter(([_,v]) => v !== '')
+    .map(([k,v]) => `${k}=${encodeURIComponent(v)}`)
+    .join('&');
+
+  // ⭐ LOCAL SQLITE SEARCH ENDPOINT
+  const res = await fetch(`${API}/api/logs/search/local?${qs}`);
+  const logs = await res.json();
+
+  const tbody = document.getElementById('logResultsBody');
+  document.getElementById('logResultCount').textContent = `${logs.length} results`;
+
+  if (!logs.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">No results</div></td></tr>`;
+    return;
+  }
+
+  // ⭐ SQLite fields are FLAT, not nested
+  tbody.innerHTML = logs.map(l => `
+    <tr>
+      <td class="dim">${l.id}</td>
+      <td class="dim">${l.timestamp || '—'}</td>
+      <td class="ip">${l.src_ip || '—'}</td>
+      <td class="ip">${l.dst_ip || '—'}</td>
+      <td class="port">${l.src_port ?? '—'}</td>
+      <td class="port">${l.dst_port ?? '—'}</td>
+      <td>${protoBadge(l.protocol)}</td>
+    </tr>
+  `).join('');
+});
+
+// ── Refresh all ───────────────────────────────────────────────────────────────
+async function refreshAll(){
+  await Promise.all([
+    fetchStats(),
+    fetchPackets(),
+    fetchLocalEvents(),
+    fetchRules(),
+    fetchAwsStats(),
+    fetchAwsAlerts(),
+    fetchAwsIngested(),
+  ]);
+}
+
+// Initial load + auto-refresh every 5 s
+refreshAll();
+setInterval(refreshAll, 5000);
+</script>
+</body>
+</html>

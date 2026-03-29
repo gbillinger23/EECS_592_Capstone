@@ -1,0 +1,12 @@
+id: host_sweep
+description: Source host connects to the same port across many destination IPs
+severity: high
+conditions:
+  - field: unique_dst_ips
+    operator: ">"
+    value: 20
+  - field: dst_port
+    operator: "=="
+    value: 22
+window: 60
+tags: [scan, network]
