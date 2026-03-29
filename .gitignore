@@ -7,3 +7,4 @@ __pycache__/
 packets.db
 run.sh
 run.sh
+*.sh
