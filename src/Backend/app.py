@@ -291,6 +291,38 @@ def api_debug():
         "aws_available":      AWS_AVAILABLE,
     })
 
+@app.route("/api/feedback", methods=["POST"])
+def api_feedback():
+    data = request.json or {}
+    packet_id = data.get("packet_id")
+    rule_id   = data.get("rule_id")
+    feedback  = data.get("feedback")
+    note      = data.get("note", "")
+
+    if not feedback:
+        return jsonify({"error": "feedback required"}), 400
+
+    ts = datetime.datetime.utcnow().isoformat()
+
+    db.insert_feedback(packet_id, rule_id, feedback, note, ts)
+
+    return jsonify({"status": "ok"})
+
+@app.route("/api/feedback", methods=["GET"])
+def api_feedback_get():
+    rows = db.get_all_feedback()
+    return jsonify([
+        {
+            "id": r[0],
+            "packet_id": r[1],
+            "rule_id": r[2],
+            "feedback": r[3],
+            "note": r[4],
+            "timestamp": r[5]
+        }
+        for r in rows
+    ])
+
 
 # ══ AWS ROUTES ════════════════════════════════════════════════════════════════
 

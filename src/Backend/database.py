@@ -27,6 +27,7 @@ class PacketDatabase:
         self.conn    = None
         self.cursor  = None
         self.init_db()
+        self.create_feedback_table()
 
     def init_db(self):
         """Initialize database and create table if it doesn't exist."""
@@ -62,11 +63,39 @@ class PacketDatabase:
             ))
             self.conn.commit()
 
+    def create_feedback_table(self):
+        with self._lock:
+            self.conn.execute("""
+                CREATE TABLE IF NOT EXISTS feedback (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    packet_id INTEGER,
+                    rule_id TEXT,
+                    feedback TEXT,
+                    note TEXT,
+                    timestamp TEXT
+                )
+            """)
+            self.conn.commit()
+
     def get_all_packets(self):
         """Retrieve all packets from database (thread-safe)."""
         with self._lock:
             self.cursor.execute('SELECT * FROM packets')
             return self.cursor.fetchall()
+        
+    def get_all_feedback(self):
+        with self._lock:
+            cur = self.conn.execute("SELECT * FROM feedback ORDER BY id DESC")
+            return cur.fetchall()
+
+    def insert_feedback(self, packet_id, rule_id, feedback, note, timestamp):
+        with self._lock:
+            self.conn.execute("""
+                INSERT INTO feedback (packet_id, rule_id, feedback, note, timestamp)
+                VALUES (?, ?, ?, ?, ?)
+            """, (packet_id, rule_id, feedback, note, timestamp))
+            self.conn.commit()
+
 
     def close(self):
         """Close database connection."""

@@ -341,6 +341,73 @@ footer a:hover{color:var(--gold)}
 .filter-item.full {
   grid-column: 1 / -1;
 }
+
+.modal {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.modal.hidden { display: none; }
+
+.modal-content {
+  width: 420px;
+  padding: 1.2rem;
+}
+
+.modal-label {
+  display: block;
+  margin-top: 1rem;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+}
+
+.modal-actions {
+  margin-top: 1.4rem;
+  display: flex;
+  justify-content: space-between;
+}
+
+.fb-panel {
+  padding: 0.8rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.fb-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--navy-card);
+  border: 1px solid var(--border);
+  padding: 0.55rem 0.75rem;
+  border-radius: 6px;
+}
+
+.fb-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+}
+
+.fb-value {
+  font-family: var(--mono);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--tl);
+}
 </style>
 </head>
 <body>
@@ -393,6 +460,7 @@ footer a:hover{color:var(--gold)}
     <button class="tab active" data-tab="dashboard">Dashboard</button>
     <button class="tab" data-tab="logsearch">Log Search</button>
     <button class="tab" data-tab="timeline">Event Timeline</button>
+    <button class="tab" data-tab="feedback">Feedback</button>
   </div>
 
   <div id="dashboard" class="tab-content" style="display:block;">
@@ -631,6 +699,42 @@ footer a:hover{color:var(--gold)}
       </div>
     </div>
 
+    <!-- Feedback Summary-->
+    <div class="panel">
+      <div class="ph">
+        <div class="pt blue-t"><div class="dot"></div>Feedback Summary</div>
+        <span class="pbadge">Analyst</span>
+      </div>
+  
+      <div class="fb-panel">
+        <div class="fb-row">
+          <div class="fb-label">Total</div>
+          <div class="fb-value" id="fbTotalPanel">0</div>
+        </div>
+  
+        <div class="fb-row">
+          <div class="fb-label">True Positives</div>
+          <div class="fb-value" id="fbTPPanel">0</div>
+        </div>
+  
+        <div class="fb-row">
+          <div class="fb-label">False Positives</div>
+          <div class="fb-value" id="fbFPPanel">0</div>
+        </div>
+  
+        <div class="fb-row">
+          <div class="fb-label">Investigate</div>
+          <div class="fb-value" id="fbINVPanel">0</div>
+        </div>
+
+        <div class="fb-row">
+          <div class="fb-label">Benign</div>
+          <div class="fb-value" id="fbBenignPanel">0</div>
+        </div>        
+
+      </div>
+    </div>
+
     <!-- AWS Alerts Table -->
     <div class="panel full">
       <div class="ph">
@@ -660,7 +764,7 @@ footer a:hover{color:var(--gold)}
         <table>
           <thead><tr>
             <th>Timestamp</th><th>Event Type</th><th>Severity</th><th>Rule ID</th>
-            <th>Src IP</th><th>Dst IP</th><th>Protocol</th><th>S3 Key</th>
+            <th>Src IP</th><th>Dst IP</th><th>Protocol</th><th>S3 Key</th><th>Feedback</th>
           </tr></thead>
           <tbody id="awsIngestedBody">
             <tr><td colspan="8"><div class="empty-state" id="awsIngestEmpty">Connecting to AWS…</div></td></tr>
@@ -763,6 +867,79 @@ footer a:hover{color:var(--gold)}
         </div>
       </div>
     
+    </div>
+  </div>
+
+  <div id="feedback" class="tab-content" style="display:none;">
+    <div class="panel full">
+      <div class="ph">
+        <div class="pt blue-t"><div class="dot"></div>Analyst Feedback</div>
+        <span class="pbadge aws-b" id="feedbackCount">0 entries</span>
+      </div>
+  
+      <div class="tscroll">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Packet / Alert</th>
+              <th>Rule</th>
+              <th>Feedback</th>
+              <th>Note</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody id="feedbackBody">
+            <tr><td colspan="6"><div class="empty-state">No feedback yet</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>  
+
+  <div id="feedbackModal" class="modal hidden">
+    <div class="modal-content panel">
+      <div class="ph">
+        <div class="pt"><span class="dot"></span> Analyst Feedback</div>
+      </div>
+  
+      <div class="modal-body">
+        <p class="dim">Provide feedback for this alert. This will be stored for future analysis and rule refinement.</p>
+  
+        <label class="modal-label">Feedback Type</label>
+        <select id="feedbackType">
+          <option value="true_positive">True Positive</option>
+          <option value="false_positive">False Positive</option>
+          <option value="benign">Benign / Expected</option>
+          <option value="investigate">Investigate Later</option>
+          <option value="note">Add Analyst Note</option>
+        </select>
+  
+        <label class="modal-label">Optional Note</label>
+        <textarea id="feedbackNote" placeholder="Add details or context..."></textarea>
+  
+        <div class="modal-actions">
+          <button class="nav-btn" onclick="submitFeedback()">Submit</button>
+          <button class="nav-btn red" onclick="closeFeedbackModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW FEEDBACK MODAL -->
+  <div id="viewFeedbackModal" class="modal hidden">
+    <div class="modal-content panel">
+      <div class="ph">
+        <div class="pt"><span class="dot"></span> Feedback for Alert</div>
+      </div>
+
+      <div class="modal-body" id="viewFeedbackBody">
+        <div class="empty-state">Loading…</div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="nav-btn red" onclick="closeViewFeedbackModal()">Close</button>
+      </div>
     </div>
   </div>
   
@@ -1103,12 +1280,40 @@ async function fetchAwsAlerts(){
         <td class="port">${a.dst_port||'—'}</td>
         <td style="font-size:.72rem;font-weight:300;color:var(--tl)">${a.description||'—'}</td>
         <td><div class="s3key" title="${a._s3_key||''}">${a._s3_key||'—'}</div></td>
+        <td>
+          <button class="nav-btn small"
+                  onclick="openFeedbackModal('${a._s3_key}', '${a.rule}')">
+            Feedback
+          </button>
+          <button class="nav-btn small ghost"
+                  onclick="openViewFeedbackModal('${a._s3_key}')">
+            View
+          </button>
+        </td>
       </tr>
     `).join('');
   }catch(e){
     document.getElementById('awsAlertBody').innerHTML=
       `<tr><td colspan="8"><div class="empty-state">AWS unavailable — ensure credentials are set</div></td></tr>`;
   }
+}
+
+// ── Feedback Summary ──────────────────────────────────────────────────────────
+async function updateFeedbackSummaryPanel() {
+  const res = await fetch(`${API}/api/feedback`);
+  const rows = await res.json();
+
+  const total = rows.length;
+  const tp = rows.filter(f => f.feedback === "true_positive").length;
+  const fp = rows.filter(f => f.feedback === "false_positive").length;
+  const inv = rows.filter(f => f.feedback === "investigate").length;
+  const benign = rows.filter(f => f.feedback === "benign").length;
+
+  document.getElementById("fbTotalPanel").textContent = total;
+  document.getElementById("fbTPPanel").textContent = tp;
+  document.getElementById("fbFPPanel").textContent = fp;
+  document.getElementById("fbINVPanel").textContent = inv;
+  document.getElementById("fbBenignPanel").textContent = benign;
 }
 
 // ── Fetch AWS ingested ────────────────────────────────────────────────────────
@@ -1141,6 +1346,67 @@ async function fetchAwsIngested(){
   }
 }
 
+async function fetchFeedback() {
+  const res = await fetch(`${API}/api/feedback`);
+  const rows = await res.json();
+
+  const tbody = document.getElementById('feedbackBody');
+  document.getElementById('feedbackCount').textContent = `${rows.length} entries`;
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">No feedback yet</div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(f => `
+    <tr>
+      <td class="dim">${f.id}</td>
+      <td class="dim">${f.packet_id || '—'}</td>
+      <td>${f.rule_id || '—'}</td>
+      <td>${f.feedback}</td>
+      <td style="font-size:.72rem;color:var(--tl)">${f.note || '—'}</td>
+      <td class="dim">${f.timestamp}</td>
+    </tr>
+  `).join('');
+}
+
+// ── View Feedback ───────────────────────────────────────────────
+async function openViewFeedbackModal(packetId) {
+  document.getElementById("viewFeedbackModal").classList.remove("hidden");
+
+  const res = await fetch(`${API}/api/feedback`);
+  const all = await res.json();
+
+  const filtered = all.filter(f => f.packet_id === packetId);
+
+  const body = document.getElementById("viewFeedbackBody");
+
+  if (!filtered.length) {
+    body.innerHTML = `<div class="empty-state">No feedback for this alert</div>`;
+    return;
+  }
+
+  body.innerHTML = filtered.map(f => `
+    <div class="panel" style="margin-bottom: .8rem;">
+      <div class="ph">
+        <div class="pt"><span class="dot"></span> ${f.feedback.replace('_',' ')}</div>
+      </div>
+      <div style="padding: .8rem;">
+        <div class="dim" style="font-size:.75rem;">Rule: ${f.rule_id || '—'}</div>
+        <div class="dim" style="font-size:.75rem;">Time: ${f.timestamp}</div>
+        <div style="margin-top:.6rem;font-size:.8rem;color:var(--tl);">
+          ${f.note || '<span class="dim">No notes</span>'}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function closeViewFeedbackModal() {
+  document.getElementById("viewFeedbackModal").classList.add("hidden");
+}
+
+
 // ── Tab Switching ───────────────────────────────────────────────
 document.querySelectorAll('.tab').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -1154,6 +1420,11 @@ document.querySelectorAll('.tab').forEach(btn => {
     document.querySelectorAll('.tab-content').forEach(sec => {
       sec.style.display = sec.id === tab ? 'block' : 'none';
     });
+
+    if (tab === "feedback") {
+      fetchFeedback();
+    }
+
   });
 });
 
@@ -1173,7 +1444,6 @@ document.getElementById('runSearch').addEventListener('click', async () => {
     .map(([k,v]) => `${k}=${encodeURIComponent(v)}`)
     .join('&');
 
-  // ⭐ LOCAL SQLITE SEARCH ENDPOINT
   const res = await fetch(`${API}/api/logs/search/local?${qs}`);
   const logs = await res.json();
 
@@ -1185,7 +1455,6 @@ document.getElementById('runSearch').addEventListener('click', async () => {
     return;
   }
 
-  // ⭐ SQLite fields are FLAT, not nested
   tbody.innerHTML = logs.map(l => `
     <tr>
       <td class="dim">${l.id}</td>
@@ -1199,6 +1468,42 @@ document.getElementById('runSearch').addEventListener('click', async () => {
   `).join('');
 });
 
+// ── Feedback ──────────────────────────────────────────────────────────────────
+let currentFeedbackKey = null;
+let currentFeedbackRule = null;
+
+function openFeedbackModal(s3Key, ruleId) {
+  currentFeedbackKey = s3Key;
+  currentFeedbackRule = ruleId;
+  document.getElementById("feedbackModal").classList.remove("hidden");
+}
+
+function closeFeedbackModal() {
+  document.getElementById("feedbackModal").classList.add("hidden");
+  currentFeedbackKey = null;
+  currentFeedbackRule = null;
+}
+
+async function submitFeedback() {
+  const type = document.getElementById("feedbackType").value;
+  const note = document.getElementById("feedbackNote").value.trim();
+
+  const payload = {
+    packet_id: currentFeedbackKey,
+    rule_id: currentFeedbackRule,
+    feedback: type,
+    note: note
+  };
+
+  await fetch(`${API}/api/feedback`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  closeFeedbackModal();
+}
+
 // ── Refresh all ───────────────────────────────────────────────────────────────
 async function refreshAll(){
   await Promise.all([
@@ -1208,6 +1513,7 @@ async function refreshAll(){
     fetchRules(),
     fetchAwsStats(),
     fetchAwsAlerts(),
+    updateFeedbackSummaryPanel(),
     fetchAwsIngested(),
   ]);
 }
