@@ -767,7 +767,70 @@ footer a:hover{color:var(--gold)}
   </div>
   
   <div id="timeline" class="tab-content" style="display:none;">
-    <!-- Timeline UI goes here -->
+    <div style="padding:1.4rem 1.8rem;max-width:1700px;margin:0 auto;">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.2rem;">
+        <div>
+          <div class="eyebrow">Investigation Workspace</div>
+          <h1 style="font-size:1.8rem;">Event <em>Timeline</em></h1>
+          <p class="dash-sub" id="tlSubtitle">Pin alerts from the log below to begin building your timeline</p>
+        </div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;">
+          <select id="tlGroupBy" style="background:var(--navy-card);border:1px solid var(--border);color:var(--tl);font-family:var(--mono);font-size:.68rem;padding:5px 10px;cursor:pointer;">
+            <option value="none">Group: none</option>
+            <option value="src_ip">Group: src IP</option>
+            <option value="protocol">Group: protocol</option>
+            <option value="severity">Group: severity</option>
+            <option value="rule">Group: rule</option>
+          </select>
+          <select id="tlFilterSev" style="background:var(--navy-card);border:1px solid var(--border);color:var(--tl);font-family:var(--mono);font-size:.68rem;padding:5px 10px;cursor:pointer;">
+            <option value="ALL">Severity: ALL</option>
+            <option value="critical">CRITICAL</option>
+            <option value="high">HIGH</option>
+            <option value="medium">MEDIUM</option>
+            <option value="low">LOW</option>
+            <option value="info">INFO</option>
+          </select>
+          <button class="nav-btn" onclick="tlPinAllCritical()">Pin All Critical</button>
+          <button class="nav-btn" onclick="tlClearTimeline()">Clear Timeline</button>
+          <button class="nav-btn" onclick="tlExportCSV()">Export CSV</button>
+          <button class="nav-btn" id="tlCopyBtn" onclick="tlCopySummary()">Copy Summary</button>
+        </div>
+      </div>
+      <div id="tlSevSummary" style="display:none;gap:.7rem;margin-bottom:1.2rem;flex-wrap:wrap;"></div>
+      <div class="panel" style="margin-bottom:1.2rem;">
+        <div class="ph">
+          <div class="pt"><div class="dot"></div>Timeline Axis</div>
+          <span class="pbadge live" id="tlPinnedBadge">0 pinned</span>
+        </div>
+        <div id="tlCanvas" style="padding:1.4rem 1.6rem;min-height:110px;">
+          <div class="empty-state">Pin events from the alert log below to build your timeline</div>
+        </div>
+      </div>
+      <div id="tlDetailCard" style="display:none;margin-bottom:1.2rem;"></div>
+      <div class="panel">
+        <div class="ph">
+          <div class="pt blue-t"><div class="dot"></div>Alert Log - from S3 alerts/</div>
+          <div style="display:flex;align-items:center;gap:.6rem;">
+            <input id="tlSearch" type="text" placeholder="Search IP, rule, port"
+              style="background:var(--navy-card);border:1px solid var(--border);color:var(--tl);font-family:var(--mono);font-size:.68rem;padding:5px 10px;width:220px;"
+              oninput="tlRenderLog()">
+            <span class="pbadge aws-b" id="tlLogCount">0 alerts</span>
+          </div>
+        </div>
+        <div class="tscroll" style="max-height:450px;">
+          <table>
+            <thead><tr>
+              <th style="width:36px;"></th>
+              <th>Timestamp</th><th>Rule</th><th>Severity</th>
+              <th>Src IP</th><th>Dst IP</th><th>Port</th><th>Protocol</th>
+            </tr></thead>
+            <tbody id="tlLogBody">
+              <tr><td colspan="8"><div class="empty-state loading">Loading alerts from AWS</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 
 </div><!-- /wrap -->
@@ -1152,6 +1215,347 @@ async function refreshAll(){
 // Initial load + auto-refresh every 5 s
 refreshAll();
 setInterval(refreshAll, 5000);
+
+// ════════════════════════════ EVENT TIMELINE ═════════════════════════════════
+const TL = {
+  alerts: [],
+  pinned: {},
+  annotations: {},
+  resolved: {},
+  selectedId: null,
+
+  SEV_COLORS: {
+    critical: { dot: '#e05c5c', border: 'rgba(224,92,92,.5)' },
+    high:     { dot: '#e88888', border: 'rgba(224,136,136,.4)' },
+    medium:   { dot: '#e09840', border: 'rgba(224,152,64,.5)' },
+    low:      { dot: '#4caf82', border: 'rgba(76,175,130,.5)' },
+    info:     { dot: '#5c8de0', border: 'rgba(92,141,224,.5)' },
+  },
+
+  IP_COLORS: ['#9b7de8','#4caf82','#e09840','#5c8de0','#e05c5c','#c8a96e','#5ce0c8'],
+  ipColorMap: {},
+
+  fmt(ts){ return ts ? new Date(ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '\u2014'; },
+  fmtDate(ts){ return ts ? new Date(ts).toLocaleDateString([],{month:'short',day:'numeric'}) : '\u2014'; },
+  sevKey(s){ return String(s||'info').toLowerCase(); },
+
+  sevBadge(s){
+    const map = { critical:'CRITICAL', high:'HIGH', medium:'MEDIUM', low:'LOW', info:'INFO' };
+    const k = this.sevKey(s);
+    const label = map[k] || String(s||'INFO').toUpperCase();
+    return '<span class="sev ' + label + '">' + label + '</span>';
+  },
+
+  buildIpColorMap(){
+    const ips = [...new Set(this.alerts.map(a=>a.src_ip))];
+    ips.forEach((ip,i)=>{ this.ipColorMap[ip] = this.IP_COLORS[i % this.IP_COLORS.length]; });
+  },
+
+  pinnedList(){
+    const sev = document.getElementById('tlFilterSev').value;
+    return this.alerts
+      .filter(a => this.pinned[a.id])
+      .filter(a => sev==='ALL' || this.sevKey(a.severity)===sev)
+      .sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+  },
+
+  groupedPinned(){
+    const groupBy = document.getElementById('tlGroupBy').value;
+    const list = this.pinnedList();
+    if(groupBy==='none') return {'All Events': list};
+    const g = {};
+    list.forEach(a=>{ const k = a[groupBy] || 'unknown'; if(!g[k]) g[k]=[]; g[k].push(a); });
+    return g;
+  },
+
+  pct(ts, minTs, range){ return ((new Date(ts).getTime()-minTs)/range)*88+6; },
+
+  render(){
+    this.renderSevSummary();
+    this.renderCanvas();
+    this.renderDetailCard();
+    this.updateSubtitle();
+  },
+
+  updateSubtitle(){
+    const pinned = Object.values(this.pinned).filter(Boolean).length;
+    document.getElementById('tlPinnedBadge').textContent = pinned + ' pinned';
+    document.getElementById('tlSubtitle').textContent = pinned === 0
+      ? 'Pin alerts from the log below to begin building your timeline'
+      : pinned + ' event' + (pinned!==1?'s':'') + ' pinned \u00b7 ' + this.alerts.length + ' total alerts from S3';
+  },
+
+  renderSevSummary(){
+    const list = this.pinnedList();
+    const el = document.getElementById('tlSevSummary');
+    if(!list.length){ el.style.display='none'; return; }
+    el.style.display='flex';
+    const counts = {critical:0,high:0,medium:0,low:0};
+    list.forEach(a=>{ const k=this.sevKey(a.severity); if(k in counts) counts[k]++; });
+    const sevMap = {
+      critical:{label:'CRITICAL',bg:'rgba(224,92,92,.15)',color:'var(--red)',border:'rgba(224,92,92,.3)'},
+      high:    {label:'HIGH',bg:'rgba(224,136,136,.1)',color:'#e88',border:'rgba(224,136,136,.25)'},
+      medium:  {label:'MEDIUM',bg:'rgba(224,152,64,.12)',color:'var(--amber)',border:'rgba(224,152,64,.3)'},
+      low:     {label:'LOW',bg:'rgba(76,175,130,.12)',color:'var(--green)',border:'rgba(76,175,130,.25)'},
+    };
+    el.innerHTML = Object.entries(sevMap).map(function([k,v]){
+      return '<div style="padding:7px 16px;background:' + v.bg + ';border:1px solid ' + v.border + ';border-radius:2px;display:flex;align-items:center;gap:10px;">' +
+        '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:.62rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:' + v.color + '">' + v.label + '</span>' +
+        '<span style="font-family:\'Cormorant Garamond\',serif;font-size:1.4rem;font-weight:300;color:' + v.color + '">' + counts[k] + '</span></div>';
+    }).join('');
+  },
+
+  renderCanvas(){
+    const grouped = this.groupedPinned();
+    const allPinned = this.pinnedList();
+    const canvas = document.getElementById('tlCanvas');
+    if(!allPinned.length){
+      canvas.innerHTML = '<div class="empty-state">Pin events from the alert log below to build your timeline</div>';
+      return;
+    }
+    const minTs = new Date(allPinned[0].timestamp).getTime();
+    const maxTs = new Date(allPinned[allPinned.length-1].timestamp).getTime();
+    const range = (maxTs - minTs) || 1;
+    let html = '';
+    const self = this;
+    Object.entries(grouped).forEach(function([groupKey, events]){
+      if(Object.keys(grouped).length > 1){
+        html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:.6rem;font-weight:700;letter-spacing:.26em;text-transform:uppercase;color:var(--gold-dim);margin-bottom:.5rem;">' + groupKey + '</div>';
+      }
+      const byIp = {};
+      events.forEach(function(ev){ if(!byIp[ev.src_ip]) byIp[ev.src_ip]=[]; byIp[ev.src_ip].push(ev); });
+      let lines = '';
+      Object.entries(byIp).forEach(function([ip, ipEvs]){
+        if(ipEvs.length < 2) return;
+        const color = self.ipColorMap[ip] || '#c8a96e';
+        const pts = ipEvs.map(function(e){ return self.pct(e.timestamp, minTs, range); });
+        for(let i=1;i<pts.length;i++){
+          lines += '<line x1="' + pts[i-1] + '%" y1="50%" x2="' + pts[i] + '%" y2="50%" stroke="' + color + '" stroke-width="2" stroke-dasharray="4 3" opacity="0.6"/>';
+        }
+      });
+      html += '<div style="position:relative;margin-bottom:36px;">';
+      html += '<div style="position:relative;height:6px;background:rgba(255,255,255,.07);border-radius:3px;">';
+      html += '<svg style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;">' + lines + '</svg>';
+      events.forEach(function(ev, i){
+        const pos = self.pct(ev.timestamp, minTs, range);
+        const col = self.SEV_COLORS[self.sevKey(ev.severity)] || self.SEV_COLORS.info;
+        const isSelected = self.selectedId === ev.id;
+        const size = isSelected ? 16 : 11;
+        const prevPos = i>0 ? self.pct(events[i-1].timestamp, minTs, range) : -999;
+        html += '<div onclick="TL.selectEvent(\'' + ev.id + '\')" onmouseenter="TL.showTooltip(event,\'' + ev.id + '\')" onmouseleave="TL.hideTooltip()" style="position:absolute;left:' + pos + '%;top:50%;transform:translate(-50%,-50%);width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:' + col.dot + ';box-shadow:0 0 0 2px ' + col.border + ',0 0 8px ' + col.dot + '44;cursor:pointer;z-index:3;transition:width .15s,height .15s;" data-id="' + ev.id + '"></div>';
+        if(Math.abs(pos-(i>0?self.pct(events[i-1].timestamp,minTs,range):-999))>=7){
+          html += '<div style="position:absolute;left:' + pos + '%;top:14px;transform:translateX(-50%);font-family:var(--mono);font-size:.55rem;color:var(--td);white-space:nowrap;pointer-events:none;">' + self.fmt(ev.timestamp) + '</div>';
+        }
+      });
+      html += '</div></div>';
+    });
+    canvas.innerHTML = html;
+  },
+
+  renderDetailCard(){
+    const card = document.getElementById('tlDetailCard');
+    if(!this.selectedId){ card.style.display='none'; return; }
+    const ev = this.alerts.find(function(a){ return a.id === TL.selectedId; });
+    if(!ev){ card.style.display='none'; return; }
+    const col = this.SEV_COLORS[this.sevKey(ev.severity)] || this.SEV_COLORS.info;
+    const ipCount = this.alerts.filter(function(a){ return a.src_ip===ev.src_ip; }).length;
+    const ann = this.annotations[ev.id]||'';
+    const res = this.resolved[ev.id]||false;
+    card.style.display='block';
+    card.innerHTML = '<div class="panel"><div class="ph"><div class="pt" style="color:' + col.dot + ';"><div class="dot" style="background:' + col.dot + ';"></div>' + (ev.rule||'\u2014') + '</div><div style="display:flex;align-items:center;gap:.6rem;">' + this.sevBadge(ev.severity) + (ipCount>1?'<span class="pbadge" style="color:var(--green);border-color:rgba(76,175,130,.25)">' + ipCount + ' alerts from this IP</span>':'') + (res?'<span class="pbadge" style="color:var(--blue);border-color:rgba(92,141,224,.25)">Resolved</span>':'') + '<span class="pbadge">' + this.fmtDate(ev.timestamp) + ' ' + this.fmt(ev.timestamp) + '</span><button class="nav-btn" onclick="TL.selectEvent(null)" style="font-size:.58rem;padding:3px 8px;">\u2715 Close</button></div></div><div style="padding:1rem 1.2rem;"><div style="font-family:var(--mono);font-size:.72rem;color:var(--tl);margin-bottom:.4rem;"><span style="color:#8fc3e8">' + (ev.src_ip||'\u2014') + '</span><span style="color:var(--td)"> \u2192 </span><span style="color:#8fc3e8">' + (ev.dst_ip||'\u2014') + '</span>' + (ev.dst_port?'<span style="color:var(--gold-dim)">:' + ev.dst_port + '</span>':'') + '<span style="color:var(--td);margin-left:.8rem;">' + (ev.protocol||'\u2014') + '</span></div><div style="font-size:.78rem;font-weight:300;color:var(--td);margin-bottom:.9rem;">' + (ev.description||'\u2014') + '</div><div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;"><span style="font-family:var(--mono);font-size:.68rem;color:var(--td);font-style:' + (ann?'normal':'italic') + ';">' + (ann||'No annotation') + '</span><button class="nav-btn" style="font-size:.58rem;padding:3px 10px;" onclick="TL.startEdit(\'' + ev.id + '\')">' + (ann?'Edit note':'Annotate') + '</button><button class="nav-btn" style="font-size:.58rem;padding:3px 10px;' + (res?'color:var(--blue);border-color:rgba(92,141,224,.4);':'') + '" onclick="TL.toggleResolved(\'' + ev.id + '\')">' + (res?'Unresolve':'Mark resolved') + '</button><button class="nav-btn" style="font-size:.58rem;padding:3px 10px;color:var(--red);border-color:rgba(224,92,92,.3);" onclick="TL.pinned[\'' + ev.id + '\']=false;TL.selectedId=null;TL.render();TL.renderLog();">Unpin</button></div><div id="tlAnnotationInput" style="display:none;margin-top:.7rem;align-items:center;"><input id="tlAnnText" type="text" value="' + ann.replace(/"/g,'&quot;') + '" placeholder="Add annotation\u2026" style="background:var(--navy-mid);border:1px solid var(--border);color:var(--tl);font-family:var(--mono);font-size:.7rem;padding:5px 10px;width:320px;" onkeydown="if(event.key===\'Enter\')TL.saveAnnotation(\'' + ev.id + '\')"><button class="nav-btn" style="margin-left:.4rem;font-size:.58rem;padding:4px 10px;" onclick="TL.saveAnnotation(\'' + ev.id + '\')">Save</button><button class="nav-btn" style="margin-left:.3rem;font-size:.58rem;padding:4px 10px;" onclick="document.getElementById(\'tlAnnotationInput\').style.display=\'none\'">Cancel</button></div></div></div>';
+  },
+
+  startEdit(id){
+    const el = document.getElementById('tlAnnotationInput');
+    if(el){ el.style.display='flex'; }
+    setTimeout(function(){ const inp=document.getElementById('tlAnnText'); if(inp) inp.focus(); },50);
+  },
+
+  saveAnnotation(id){
+    const val = document.getElementById('tlAnnText') ? document.getElementById('tlAnnText').value : '';
+    this.annotations[id] = val;
+    this.renderDetailCard();
+    this.render();
+  },
+
+  toggleResolved(id){
+    this.resolved[id] = !this.resolved[id];
+    this.renderDetailCard();
+    this.render();
+  },
+
+  selectEvent(id){
+    this.selectedId = this.selectedId===id ? null : id;
+    this.render();
+    this.renderLog();
+  },
+
+  showTooltip(e, id){
+    const ev = this.alerts.find(function(a){ return a.id===id; });
+    if(!ev) return;
+    let tip = document.getElementById('tlTooltip');
+    if(!tip){
+      tip = document.createElement('div');
+      tip.id = 'tlTooltip';
+      tip.style.cssText = 'position:fixed;background:var(--navy-mid);border:1px solid var(--border);border-left:2px solid var(--gold);padding:6px 12px;font-size:.68rem;font-weight:300;color:var(--tl);pointer-events:none;z-index:9999;white-space:nowrap;max-width:300px;';
+      document.body.appendChild(tip);
+    }
+    const col = this.SEV_COLORS[this.sevKey(ev.severity)] || this.SEV_COLORS.info;
+    tip.innerHTML = '<div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:' + col.dot + ';margin-bottom:2px;">' + (ev.rule||'\u2014') + '</div><div style="font-family:var(--mono);font-size:.62rem;color:var(--td)">' + (ev.src_ip||'\u2014') + ' \u00b7 ' + this.fmt(ev.timestamp) + '</div>';
+    tip.style.left = (e.clientX+14) + 'px';
+    tip.style.top  = (e.clientY-36) + 'px';
+    tip.style.display = 'block';
+  },
+
+  hideTooltip(){
+    const tip = document.getElementById('tlTooltip');
+    if(tip) tip.style.display='none';
+  },
+
+  renderLog(){
+    const q = (document.getElementById('tlSearch') ? document.getElementById('tlSearch').value : '').toLowerCase();
+    const self = this;
+    const filtered = this.alerts.filter(function(a){
+      if(!q) return true;
+      return (a.src_ip||'').includes(q)||(a.dst_ip||'').includes(q)||
+             (a.rule||'').toLowerCase().includes(q)||(a.dst_port||'').includes(q)||
+             (a.severity||'').toLowerCase().includes(q)||(a.protocol||'').toLowerCase().includes(q);
+    });
+    document.getElementById('tlLogCount').textContent = filtered.length + ' alerts';
+    const ipCounts = {};
+    this.alerts.forEach(function(a){ ipCounts[a.src_ip]=(ipCounts[a.src_ip]||0)+1; });
+    const tbody = document.getElementById('tlLogBody');
+    if(!filtered.length){
+      tbody.innerHTML='<tr><td colspan="8"><div class="empty-state">No alerts match your search</div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = filtered.map(function(a){
+      const isPinned = !!self.pinned[a.id];
+      const col = self.SEV_COLORS[self.sevKey(a.severity)] || self.SEV_COLORS.info;
+      const dup = ipCounts[a.src_ip]>1;
+      const isPreview = self.selectedId===a.id && isPinned;
+      const proto = a.protocol ? String(a.protocol).toUpperCase() : '';
+      const protoBg = ['TCP','UDP'].includes(proto) ? proto : 'OTHER';
+      let row = '<tr style="background:' + (isPinned?'rgba(200,169,110,.04)':'') + ';" class="' + (isPreview?'new':'') + '">';
+      row += '<td><button onclick="TL.togglePin(\'' + a.id + '\')" title="' + (isPinned?'Unpin':'Pin to timeline') + '" style="background:' + (isPinned?col.dot+'22':'transparent') + ';border:1px solid ' + (isPinned?col.dot:'var(--border)') + ';width:26px;height:26px;cursor:pointer;color:' + (isPinned?col.dot:'var(--td)') + ';font-size:.85rem;display:flex;align-items:center;justify-content:center;transition:all .15s;">' + (isPinned?'\u2605':'\u2606') + '</button></td>';
+      row += '<td class="dim">' + (a.timestamp||'\u2014') + '</td>';
+      row += '<td style="font-family:var(--mono);font-size:.67rem;color:var(--blue)">' + (a.rule||'\u2014') + '</td>';
+      row += '<td>' + self.sevBadge(a.severity) + '</td>';
+      row += '<td class="ip">' + (a.src_ip||'\u2014') + (dup?' <span style="font-size:.55rem;color:var(--amber)">(' + ipCounts[a.src_ip] + ')</span>':'') + '</td>';
+      row += '<td class="ip">' + (a.dst_ip||'\u2014') + '</td>';
+      row += '<td class="port">' + (a.dst_port||'\u2014') + '</td>';
+      row += '<td>' + (proto?'<span class="pbg ' + protoBg + '">' + proto + '</span>':'\u2014') + '</td>';
+      row += '</tr>';
+      if(isPinned && self.selectedId===a.id){
+        row += '<tr style="background:rgba(200,169,110,.02);"><td colspan="8" style="padding:.6rem 1.2rem .8rem 3rem;"><div style="font-family:var(--mono);font-size:.65rem;color:var(--td)"><span style="color:#8fc3e8">' + a.src_ip + '</span> \u2192 <span style="color:#8fc3e8">' + a.dst_ip + '</span>' + (a.dst_port?':'+a.dst_port:'') + ' \u00b7 ' + (a.protocol||'\u2014') + ' \u00b7 ' + self.fmtDate(a.timestamp) + ' ' + self.fmt(a.timestamp) + '</div><div style="font-size:.72rem;font-weight:300;color:var(--td);margin-top:3px;">' + (a.description||'\u2014') + '</div></td></tr>';
+      }
+      return row;
+    }).join('');
+  },
+
+  togglePin(id){
+    this.pinned[id] = !this.pinned[id];
+    if(!this.pinned[id] && this.selectedId===id) this.selectedId=null;
+    this.render();
+    this.renderLog();
+  },
+
+  tlPinAllCritical(){
+    const self = this;
+    this.alerts.filter(function(a){ return ['critical','high'].includes(self.sevKey(a.severity)); })
+               .forEach(function(a){ self.pinned[a.id]=true; });
+    this.render(); this.renderLog();
+  },
+
+  tlClearTimeline(){
+    this.pinned={}; this.selectedId=null;
+    this.annotations={}; this.resolved={};
+    this.render(); this.renderLog();
+  },
+
+  tlExportCSV(){
+    const list = this.pinnedList();
+    if(!list.length){ toast('No pinned events to export'); return; }
+    const self = this;
+    const headers = ['timestamp','rule','severity','src_ip','dst_ip','dst_port','protocol','description','annotation','resolved'];
+    const rows = list.map(function(e){
+      return headers.map(function(h){
+        if(h==='annotation') return JSON.stringify(self.annotations[e.id]||'');
+        if(h==='resolved')   return JSON.stringify(!!self.resolved[e.id]);
+        return JSON.stringify(e[h]!=null?e[h]:'');
+      }).join(',');
+    });
+    const csv = headers.join(',') + '\n' + rows.join('\n');
+    const blob = new Blob([csv],{type:'text/csv'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href=url; a.download='timeline_export.csv'; a.click();
+    URL.revokeObjectURL(url);
+  },
+
+  tlCopySummary(){
+    const list = this.pinnedList();
+    if(!list.length){ toast('No pinned events to summarise'); return; }
+    const self = this;
+    const lines = [
+      'INCIDENT SUMMARY \u2014 ' + new Date().toLocaleString(),
+      'Total pinned: ' + list.length,
+      'CRITICAL/HIGH: ' + list.filter(function(e){ return ['critical','high'].includes(self.sevKey(e.severity)); }).length +
+      '  MEDIUM: ' + list.filter(function(e){ return self.sevKey(e.severity)==='medium'; }).length +
+      '  LOW: ' + list.filter(function(e){ return self.sevKey(e.severity)==='low'; }).length,
+      '',
+      'EVENTS:'
+    ].concat(list.map(function(e,i){
+      const note = self.annotations[e.id] ? ' | Note: ' + self.annotations[e.id] : '';
+      const res  = self.resolved[e.id] ? ' [RESOLVED]' : '';
+      return (i+1) + '. [' + String(e.severity).toUpperCase() + '] ' + e.rule + ' \u2014 ' + e.src_ip + ' \u2192 ' + e.dst_ip + (e.dst_port?':'+e.dst_port:'') + ' at ' + self.fmt(e.timestamp) + note + res;
+    }));
+    navigator.clipboard.writeText(lines.join('\n')).then(function(){
+      const btn = document.getElementById('tlCopyBtn');
+      btn.textContent='Copied!'; btn.style.color='var(--green)';
+      setTimeout(function(){ btn.textContent='Copy Summary'; btn.style.color=''; },2000);
+    });
+  },
+
+  load: async function(){
+    try{
+      const res  = await fetch(API + '/api/aws/alerts');
+      const data = await res.json();
+      this.alerts = data.map(function(a,i){
+        return {
+          id:          String(i+1),
+          timestamp:   a.timestamp||'',
+          rule:        a.rule||'unknown',
+          severity:    a.severity||'info',
+          src_ip:      a.src_ip||'',
+          dst_ip:      a.dst_ip||'',
+          dst_port:    a.dst_port?String(a.dst_port):null,
+          protocol:    a.protocol||'tcp',
+          description: a.description||'',
+        };
+      });
+      TL.buildIpColorMap();
+      TL.render();
+      TL.renderLog();
+    }catch(e){
+      const tbody = document.getElementById('tlLogBody');
+      if(tbody) tbody.innerHTML='<tr><td colspan="8"><div class="empty-state">Could not load alerts \u2014 is the API running?</div></td></tr>';
+    }
+  },
+};
+
+function tlPinAllCritical(){ TL.tlPinAllCritical(); }
+function tlClearTimeline(){  TL.tlClearTimeline();  }
+function tlExportCSV(){      TL.tlExportCSV();      }
+function tlCopySummary(){    TL.tlCopySummary();    }
+function tlRenderLog(){      TL.renderLog();        }
+
+document.querySelectorAll('.tab').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    if(btn.dataset.tab==='timeline') TL.load();
+  });
+});
+
 </script>
 </body>
 </html>
