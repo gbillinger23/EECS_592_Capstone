@@ -278,6 +278,59 @@ def api_rules():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/rules", methods=["POST"])
+def api_rules_create():
+    import yaml as _yaml
+    data = request.json or {}
+    rule_id     = (data.get("id") or "").strip()
+    description = (data.get("description") or "").strip()
+    severity    = (data.get("severity") or "medium").strip().lower()
+    conditions  = data.get("conditions", [])
+    window      = data.get("window")
+    tags        = data.get("tags", [])
+
+    if not rule_id or not description or not conditions:
+        return jsonify({"error": "id, description, and conditions are required"}), 400
+
+    safe_name = "".join(c if c.isalnum() or c in "_-" else "_" for c in rule_id)
+    filepath  = os.path.join(RULES_DIR, f"{safe_name}.yaml")
+    if os.path.exists(filepath):
+        return jsonify({"error": f"Rule '{rule_id}' already exists"}), 409
+
+    rule_data = {"id": rule_id, "description": description,
+                 "severity": severity, "conditions": conditions}
+    if window:
+        try:
+            rule_data["window"] = int(window)
+        except (TypeError, ValueError):
+            pass
+    if tags:
+        rule_data["tags"] = tags
+
+    with open(filepath, "w") as f:
+        _yaml.dump(rule_data, f, default_flow_style=False, sort_keys=False)
+
+    return jsonify({"status": "created", "id": rule_id}), 201
+
+
+@app.route("/api/rules/<rule_id>", methods=["DELETE"])
+def api_rules_delete(rule_id):
+    import yaml as _yaml
+    for fname in os.listdir(RULES_DIR):
+        if not fname.endswith(".yaml"):
+            continue
+        fpath = os.path.join(RULES_DIR, fname)
+        try:
+            with open(fpath) as f:
+                data = _yaml.safe_load(f)
+            if data.get("id") == rule_id:
+                os.remove(fpath)
+                return jsonify({"status": "deleted"})
+        except Exception:
+            continue
+    return jsonify({"error": "Rule not found"}), 404
+
+
 @app.route("/api/debug")
 def api_debug():
     """Diagnostic endpoint — check capture queue and worker status."""
