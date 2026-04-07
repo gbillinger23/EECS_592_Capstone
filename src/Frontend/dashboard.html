@@ -376,6 +376,77 @@ footer a:hover{color:var(--gold)}
   justify-content: space-between;
 }
 
+/* ── RULE MANAGER ────────────────────────────────── */
+.rm-modal-bg{
+  display:none;position:fixed;inset:0;z-index:500;
+  background:rgba(5,10,20,0.82);backdrop-filter:blur(6px);
+  align-items:center;justify-content:center;
+}
+.rm-modal-bg.open{display:flex}
+.rm-modal{
+  background:var(--navy-card);border:1px solid var(--border);
+  width:min(680px,95vw);max-height:88vh;overflow-y:auto;
+  padding:1.6rem 2rem;position:relative;
+}
+.rm-modal h3{
+  font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:300;
+  color:var(--white);margin-bottom:1.2rem;
+}
+.rm-field{margin-bottom:1rem}
+.rm-label{
+  font-family:'Barlow Condensed',sans-serif;font-size:.6rem;font-weight:700;
+  letter-spacing:.22em;text-transform:uppercase;color:var(--gold-dim);
+  display:block;margin-bottom:.35rem;
+}
+.rm-input,.rm-select{
+  width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);
+  color:var(--tl);font-family:var(--mono);font-size:.75rem;padding:7px 10px;
+  outline:none;transition:border-color .2s;
+}
+.rm-input:focus,.rm-select:focus{border-color:var(--gold-dim)}
+.rm-select option{background:var(--navy-mid)}
+.rm-row{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+.rm-cond-list{display:flex;flex-direction:column;gap:.5rem;margin-bottom:.6rem}
+.rm-cond{display:grid;grid-template-columns:1fr .8fr .8fr auto;gap:.5rem;align-items:center}
+.rm-cond .rm-input{font-size:.7rem;padding:5px 8px}
+.rm-cond .rm-select{font-size:.7rem;padding:5px 8px}
+.rm-remove-cond{
+  background:transparent;border:1px solid rgba(224,92,92,.3);color:var(--red);
+  font-size:.75rem;padding:4px 9px;cursor:pointer;transition:all .2s;
+}
+.rm-remove-cond:hover{background:rgba(224,92,92,.1)}
+.rm-add-cond{
+  background:transparent;border:1px solid var(--border);color:var(--td);
+  font-family:'Barlow Condensed',sans-serif;font-size:.6rem;letter-spacing:.16em;
+  text-transform:uppercase;padding:5px 14px;cursor:pointer;transition:all .2s;
+}
+.rm-add-cond:hover{border-color:var(--gold);color:var(--gold)}
+.rm-actions{display:flex;justify-content:flex-end;gap:.8rem;margin-top:1.4rem}
+.rm-btn-cancel{
+  background:transparent;border:1px solid var(--border);color:var(--td);
+  font-family:'Barlow Condensed',sans-serif;font-size:.62rem;letter-spacing:.16em;
+  text-transform:uppercase;padding:6px 18px;cursor:pointer;transition:all .2s;
+}
+.rm-btn-cancel:hover{border-color:var(--gold-dim);color:var(--tl)}
+.rm-btn-save{
+  background:var(--gold-faint);border:1px solid var(--gold-dim);color:var(--gold);
+  font-family:'Barlow Condensed',sans-serif;font-size:.62rem;letter-spacing:.16em;
+  text-transform:uppercase;padding:6px 18px;cursor:pointer;transition:all .2s;
+}
+.rm-btn-save:hover{background:rgba(200,169,110,.16);border-color:var(--gold)}
+.btn-add-rule{
+  background:var(--gold-faint);border:1px solid var(--gold-dim);color:var(--gold);
+  font-family:'Barlow Condensed',sans-serif;font-size:.6rem;letter-spacing:.16em;
+  text-transform:uppercase;padding:4px 13px;cursor:pointer;transition:all .2s;
+}
+.btn-add-rule:hover{background:rgba(200,169,110,.16);border-color:var(--gold)}
+.btn-del-rule{
+  background:transparent;border:1px solid rgba(224,92,92,.25);color:rgba(224,92,92,.7);
+  font-family:'Barlow Condensed',sans-serif;font-size:.55rem;letter-spacing:.12em;
+  text-transform:uppercase;padding:2px 8px;cursor:pointer;transition:all .2s;
+}
+.btn-del-rule:hover{background:rgba(224,92,92,.1);border-color:var(--red);color:var(--red)}
+
 .fb-panel {
   padding: 0.8rem 1rem 1rem;
   display: flex;
@@ -571,16 +642,19 @@ footer a:hover{color:var(--gold)}
     <div class="panel full">
       <div class="ph">
         <div class="pt"><div class="dot"></div>Loaded YAML Detection Rules</div>
-        <span class="pbadge" id="rulesCount">0 rules</span>
+        <div style="display:flex;align-items:center;gap:.7rem">
+          <span class="pbadge" id="rulesCount">0 rules</span>
+          <button class="btn-add-rule" onclick="openAddRuleModal()">+ Add Rule</button>
+        </div>
       </div>
       <div class="tscroll">
         <table>
           <thead><tr>
             <th>Rule ID</th><th>Severity</th><th>Description</th>
-            <th>Conditions</th><th>Window</th><th>Tags</th>
+            <th>Conditions</th><th>Window</th><th>Tags</th><th></th>
           </tr></thead>
           <tbody id="rulesBody">
-            <tr><td colspan="6"><div class="empty-state">No rules loaded — check ./rules directory</div></td></tr>
+            <tr><td colspan="7"><div class="empty-state">No rules loaded — check ./rules directory</div></td></tr>
           </tbody>
         </table>
       </div>
@@ -1014,6 +1088,57 @@ footer a:hover{color:var(--gold)}
 
 <div id="toast"></div>
 
+<!-- ── ADD RULE MODAL ───────────────────────────────────────────────── -->
+<div class="rm-modal-bg" id="addRuleModal" onclick="if(event.target===this)closeAddRuleModal()">
+  <div class="rm-modal">
+    <h3>Add Detection Rule</h3>
+
+    <div class="rm-row">
+      <div class="rm-field">
+        <label class="rm-label">Rule ID *</label>
+        <input class="rm-input" id="rmId" type="text" placeholder="e.g. high_port_traffic">
+      </div>
+      <div class="rm-field">
+        <label class="rm-label">Severity *</label>
+        <select class="rm-select" id="rmSeverity">
+          <option value="critical">Critical</option>
+          <option value="high">High</option>
+          <option value="medium" selected>Medium</option>
+          <option value="low">Low</option>
+          <option value="info">Info</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="rm-field">
+      <label class="rm-label">Description *</label>
+      <input class="rm-input" id="rmDesc" type="text" placeholder="What does this rule detect?">
+    </div>
+
+    <div class="rm-field">
+      <label class="rm-label">Conditions *</label>
+      <div class="rm-cond-list" id="rmCondList"></div>
+      <button class="rm-add-cond" onclick="rmAddCondition()">+ Add Condition</button>
+    </div>
+
+    <div class="rm-row">
+      <div class="rm-field">
+        <label class="rm-label">Window (seconds)</label>
+        <input class="rm-input" id="rmWindow" type="number" placeholder="e.g. 60 (optional)">
+      </div>
+      <div class="rm-field">
+        <label class="rm-label">Tags (comma-separated)</label>
+        <input class="rm-input" id="rmTags" type="text" placeholder="e.g. scan, network">
+      </div>
+    </div>
+
+    <div class="rm-actions">
+      <button class="rm-btn-cancel" onclick="closeAddRuleModal()">Cancel</button>
+      <button class="rm-btn-save" onclick="submitAddRule()">Save Rule</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const API = 'http://localhost:5000';
 let prevPacketIds = new Set();
@@ -1205,7 +1330,7 @@ async function fetchRules(){
     document.getElementById('rulesCount').textContent = `${rules.length} rules`;
     const tbody = document.getElementById('rulesBody');
     if(!rules.length||rules.error){
-      tbody.innerHTML='<tr><td colspan="6"><div class="empty-state">No rules found — add YAML files to ./rules/</div></td></tr>';
+      tbody.innerHTML='<tr><td colspan="7"><div class="empty-state">No rules found — add YAML files to ./rules/</div></td></tr>';
       return;
     }
     tbody.innerHTML = rules.map(r=>`
@@ -1216,9 +1341,95 @@ async function fetchRules(){
         <td style="font-family:var(--mono);font-size:.62rem;color:var(--td)">${(r.conditions||[]).map(c=>`${c.field} ${c.operator} ${c.value}`).join('<br>')}</td>
         <td class="dim">${r.window??'—'} s</td>
         <td class="dim">${(r.tags||[]).join(', ')||'—'}</td>
+        <td><button class="btn-del-rule" onclick="deleteRule('${r.id.replace(/'/g,"\\'")}')">Remove</button></td>
       </tr>
     `).join('');
   }catch(e){}
+}
+
+// ── Rule management ───────────────────────────────────────────────────────────
+function openAddRuleModal(){
+  document.getElementById('rmId').value='';
+  document.getElementById('rmDesc').value='';
+  document.getElementById('rmSeverity').value='medium';
+  document.getElementById('rmWindow').value='';
+  document.getElementById('rmTags').value='';
+  document.getElementById('rmCondList').innerHTML='';
+  rmAddCondition();
+  document.getElementById('addRuleModal').classList.add('open');
+}
+
+function closeAddRuleModal(){
+  document.getElementById('addRuleModal').classList.remove('open');
+}
+
+function rmAddCondition(){
+  const list = document.getElementById('rmCondList');
+  const idx  = list.children.length;
+  const row  = document.createElement('div');
+  row.className = 'rm-cond';
+  row.innerHTML = `
+    <input class="rm-input" type="text" placeholder="field (e.g. dst_port)" data-role="field">
+    <select class="rm-select" data-role="operator">
+      <option value="==">== (eq)</option>
+      <option value="!=">!= (neq)</option>
+      <option value=">">&gt; (gt)</option>
+      <option value="<">&lt; (lt)</option>
+      <option value="contains">contains</option>
+    </select>
+    <input class="rm-input" type="text" placeholder="value (e.g. 80)" data-role="value">
+    <button class="rm-remove-cond" onclick="this.parentElement.remove()">✕</button>
+  `;
+  list.appendChild(row);
+}
+
+async function submitAddRule(){
+  const rule_id   = document.getElementById('rmId').value.trim();
+  const desc      = document.getElementById('rmDesc').value.trim();
+  const severity  = document.getElementById('rmSeverity').value;
+  const windowVal = document.getElementById('rmWindow').value.trim();
+  const tagsRaw   = document.getElementById('rmTags').value.trim();
+  const condRows  = document.getElementById('rmCondList').querySelectorAll('.rm-cond');
+
+  if(!rule_id||!desc){toast('Rule ID and description are required'); return;}
+
+  const conditions = [];
+  for(const row of condRows){
+    const field = row.querySelector('[data-role="field"]').value.trim();
+    const op    = row.querySelector('[data-role="operator"]').value;
+    const val   = row.querySelector('[data-role="value"]').value.trim();
+    if(!field||!val){toast('All condition fields must be filled in'); return;}
+    conditions.push({field, operator: op, value: isNaN(val)?val:Number(val)});
+  }
+  if(!conditions.length){toast('At least one condition is required'); return;}
+
+  const payload = {id:rule_id, description:desc, severity, conditions};
+  if(windowVal) payload.window = parseInt(windowVal);
+  if(tagsRaw)   payload.tags   = tagsRaw.split(',').map(t=>t.trim()).filter(Boolean);
+
+  try{
+    const res = await fetch(`${API}/api/rules`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if(!res.ok){toast(data.error||'Failed to create rule'); return;}
+    closeAddRuleModal();
+    toast(`Rule '${rule_id}' created`);
+    fetchRules();
+  }catch(e){toast('Error connecting to API');}
+}
+
+async function deleteRule(ruleId){
+  if(!confirm(`Remove rule '${ruleId}'?`)) return;
+  try{
+    const res = await fetch(`${API}/api/rules/${encodeURIComponent(ruleId)}`,{method:'DELETE'});
+    const data = await res.json();
+    if(!res.ok){toast(data.error||'Failed to delete rule'); return;}
+    toast(`Rule '${ruleId}' removed`);
+    fetchRules();
+  }catch(e){toast('Error connecting to API');}
 }
 
 // ── Fetch AWS stats ───────────────────────────────────────────────────────────
