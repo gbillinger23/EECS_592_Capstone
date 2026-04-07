@@ -872,18 +872,25 @@
 </div>
 
 <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
-  // Modal
+  // ── Login Modal ───────────────────────────────────────────────────────
+  // openModal — adds the 'active' class that makes the overlay visible
+  // and locks page scroll while the modal is open.
   function openModal() {
     document.getElementById('loginModal').classList.add('active');
     document.body.style.overflow = 'hidden';
   }
+  // closeModal — removes 'active' to hide the overlay and restores scroll.
   function closeModal() {
     document.getElementById('loginModal').classList.remove('active');
     document.body.style.overflow = '';
   }
+  // handleOverlayClick — closes the modal when the user clicks the dark
+  // backdrop (i.e. outside the modal box itself).
   function handleOverlayClick(e) {
     if (e.target === document.getElementById('loginModal')) closeModal();
   }
+  // handleLogin — basic validation placeholder; a real implementation
+  // would POST credentials to an auth endpoint here.
   function handleLogin() {
     const email = document.getElementById('email').value;
     const pass = document.getElementById('password').value;
@@ -893,7 +900,10 @@
     }
     alert('Login functionality would connect to your auth endpoint.');
   }
+  // Pressing Escape closes the modal from anywhere on the page.
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-  // Scroll reveal
+  // ── Scroll Reveal (Intersection Observer) ────────────────────────────
+  // Watches every .reveal element; once it enters the viewport the
+  // 'visible' class is added, triggering the CSS fade-up transition.
   const observer = new IntersectionO

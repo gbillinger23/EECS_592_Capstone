@@ -1510,6 +1510,8 @@ async function fetchAwsAlerts(){
 }
 
 // ── Feedback Summary ──────────────────────────────────────────────────────────
+// Fetches all stored feedback entries and groups them by type (true positive,
+// false positive, investigate, benign) to populate the summary panel KPIs.
 async function updateFeedbackSummaryPanel() {
   const res = await fetch(`${API}/api/feedback`);
   const rows = await res.json();
@@ -1557,6 +1559,9 @@ async function fetchAwsIngested(){
   }
 }
 
+// ── Fetch feedback list ───────────────────────────────────────────────────────
+// Loads all analyst feedback rows from the API and renders them in the
+// Feedback tab table, showing packet/alert ID, rule, type, note, and timestamp.
 async function fetchFeedback() {
   const res = await fetch(`${API}/api/feedback`);
   const rows = await res.json();
@@ -1618,7 +1623,10 @@ function closeViewFeedbackModal() {
 }
 
 
-// ── Tab Switching ───────────────────────────────────────────────
+// ── Tab Switching ────────────────────────────────────────────────────────────
+// Attaches click handlers to each tab button. On click: updates the active
+// button highlight, shows the matching .tab-content panel, hides all others,
+// and lazily loads the Feedback tab data when it first becomes visible.
 document.querySelectorAll('.tab').forEach(btn => {
   btn.addEventListener('click', () => {
 
@@ -1626,12 +1634,13 @@ document.querySelectorAll('.tab').forEach(btn => {
     document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
 
-    // Show the selected tab content
+    // Show the selected tab content, hide all others
     const tab = btn.dataset.tab;
     document.querySelectorAll('.tab-content').forEach(sec => {
       sec.style.display = sec.id === tab ? 'block' : 'none';
     });
 
+    // Fetch feedback data on demand when the Feedback tab is opened
     if (tab === "feedback") {
       fetchFeedback();
     }
@@ -1639,7 +1648,10 @@ document.querySelectorAll('.tab').forEach(btn => {
   });
 });
 
-// ── Log Search ───────────────────────────────────────────────
+// ── Log Search ────────────────────────────────────────────────────────────────
+// Reads the filter values (src/dst IP, protocol, ports, time range), builds a
+// query string, calls the local search API, and renders the matching packet
+// rows in the Log Search results table.
 document.getElementById('runSearch').addEventListener('click', async () => {
   const params = {
     src_ip:   document.getElementById('fSrcIp').value.trim(),
@@ -1679,22 +1691,32 @@ document.getElementById('runSearch').addEventListener('click', async () => {
   `).join('');
 });
 
-// ── Feedback ──────────────────────────────────────────────────────────────────
+// ── Analyst Feedback modal ────────────────────────────────────────────────────
+// currentFeedbackKey / currentFeedbackRule track which S3 alert the analyst
+// is currently annotating, so submitFeedback() knows what to associate the
+// feedback with.
 let currentFeedbackKey = null;
 let currentFeedbackRule = null;
 
+// openFeedbackModal — stores the alert's S3 key and rule ID, then shows
+// the feedback modal overlay so the analyst can choose a feedback type
+// and optionally add a note.
 function openFeedbackModal(s3Key, ruleId) {
   currentFeedbackKey = s3Key;
   currentFeedbackRule = ruleId;
   document.getElementById("feedbackModal").classList.remove("hidden");
 }
 
+// closeFeedbackModal — hides the modal and clears the tracked alert context.
 function closeFeedbackModal() {
   document.getElementById("feedbackModal").classList.add("hidden");
   currentFeedbackKey = null;
   currentFeedbackRule = null;
 }
 
+// submitFeedback — POSTs the chosen feedback type and optional note to the API,
+// associating it with the current alert via its S3 key and rule ID, then
+// dismisses the modal.
 async function submitFeedback() {
   const type = document.getElementById("feedbackType").value;
   const note = document.getElementById("feedbackNote").value.trim();
@@ -1716,6 +1738,8 @@ async function submitFeedback() {
 }
 
 // ── Refresh all ───────────────────────────────────────────────────────────────
+// Fires all fetch functions in parallel. Called on initial page load and then
+// every 5 seconds by setInterval to keep the dashboard live.
 async function refreshAll(){
   await Promise.all([
     fetchStats(),
@@ -1734,6 +1758,19 @@ refreshAll();
 setInterval(refreshAll, 5000);
 
 // ════════════════════════════ EVENT TIMELINE ═════════════════════════════════
+// TL is a self-contained namespace object that manages the Event Timeline tab.
+// It holds the full alert list, the user's pinned events, per-event annotations
+// and resolved flags, and all render methods for the timeline canvas, severity
+// summary chips, detail card, and alert log table.
+//
+// Key methods:
+//   renderCanvas()    — draws the horizontal time-axis with positioned dots
+//   renderDetailCard() — shows full detail for the selected (clicked) event
+//   renderSevSummary() — severity-count chips above the timeline axis
+//   renderLog()       — renders the filterable alert log table below the axis
+//   tlPinAllCritical() — bulk-pins every CRITICAL alert
+//   tlExportCSV()     — downloads pinned events as a CSV file
+//   tlCopySummary()   — copies a plain-text incident summary to the clipboard
 const TL = {
   alerts: [],
   pinned: {},

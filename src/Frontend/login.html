@@ -6,8 +6,16 @@
 <title>NetGuard Analytics — Client Login</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
 <style>
+  /* ── GLOBAL RESET ────────────────────────────────────────────────────
+     Strips default margins/padding and enforces border-box sizing on
+     every element so dimensions include padding and border.           */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+  /* ── DESIGN TOKENS (CSS custom properties) ───────────────────────────
+     Central color palette shared across the entire login page.
+     --cream / --ink define the light/dark page split.
+     --gold / --rust are the brand accent colors used on interactive
+     elements, borders, and labels.                                    */
   :root {
     --cream: #f5f0e8;
     --ink:   #0d1b2e;
@@ -29,7 +37,12 @@
     overflow: hidden;
   }
 
-  /* Left panel */
+  /* ── LEFT PANEL (Branding) ───────────────────────────────────────────
+     Dark navy half of the two-column split layout.
+     Displays the NetGuard brand mark, hero headline, and three
+     stat numbers (uptime, packet volume, cloud provider).
+     Decorative radial gradients and a CSS grid overlay sit inside
+     ::before / .grid-lines pseudo-elements.                          */
   .left {
     background-color: var(--ink);
     background-image: linear-gradient(160deg, #0d1b2e 0%, #152540 100%);
@@ -151,7 +164,11 @@
     z-index: 10;
   }
 
-  /* Right panel */
+  /* ── RIGHT PANEL (Login Form) ───────────────────────────────────────
+     Cream-colored half that hosts the two-step sign-in form.
+     The .form-container fades up on load via the fadeUp animation.
+     Step 1 collects the email; step 2 reveals the password field
+     once the email is validated.                                      */
   .right {
     display: flex;
     align-items: center;
@@ -553,12 +570,19 @@
 </style>
 
 <script>
+  // ── Hardcoded credentials (demo only) ────────────────────────────────
+  // Two valid accounts used for front-end authentication simulation.
+  // A real deployment would validate credentials against a server API.
   const VALID = [
     { email: 'admin@netguard.io',  password: 'netguard2026' },
     { email: 'client@netguard.io', password: 'client2026'   },
   ];
+  // Relative path to the dashboard page reached after a successful login.
   const DASHBOARD = '../Frontend/dashboard.html';
 
+  // ── Error display helpers ─────────────────────────────────────────────
+  // showErr — reveals the error message element, highlights the input in
+  // red, and plays a shake animation to draw the user's attention.
   function showErr(errId, inputId, msg) {
     const el = document.getElementById(errId);
     const inp = document.getElementById(inputId);
@@ -567,20 +591,29 @@
     inp.style.animation = 'none'; void inp.offsetWidth;
     inp.style.animation = 'shake 0.35s ease';
   }
+  // clearErr — removes the error state from both the label and the input.
   function clearErr(errId, inputId) {
     document.getElementById(errId).classList.remove('show');
     document.getElementById(inputId).classList.remove('bad');
   }
+  // ── Button state helpers ──────────────────────────────────────────────
+  // setLoading — disables the button and updates its label while the
+  // simulated async check is running (setTimeout).
   function setLoading(btnId, labelId, txt) {
     document.getElementById(btnId).disabled = true;
     document.getElementById(labelId).textContent = txt;
   }
+  // resetBtn — re-enables the button and restores its original label text.
   function resetBtn(btnId, labelId, txt) {
     const b = document.getElementById(btnId);
     b.disabled = false; b.classList.remove('success');
     document.getElementById(labelId).textContent = txt;
   }
 
+  // ── Step 1 → Step 2 transition ────────────────────────────────────────
+  // handleNext — validates the email format, looks it up in VALID[], then
+  // hides step 1 and reveals the password step with the email chip filled.
+  // A 650 ms delay simulates a network lookup.
   function handleNext() {
     const email = document.getElementById('emailInput').value.trim();
     clearErr('emailErr', 'emailInput');
@@ -605,6 +638,9 @@
     }, 650);
   }
 
+  // ── Step 2 → Step 1 back navigation ──────────────────────────────────
+  // goBack — hides the password step, resets its state (clears password
+  // value + errors), and restores step 1 with a fade-in animation.
   function goBack() {
     document.getElementById('step2').style.display = 'none';
     const s1 = document.getElementById('step1');
@@ -617,6 +653,10 @@
     setTimeout(() => document.getElementById('emailInput').focus(), 40);
   }
 
+  // ── Sign-in submission ────────────────────────────────────────────────
+  // handleSignIn — verifies the email+password pair against VALID[].
+  // On success: turns the button green and redirects to the dashboard
+  // after 700 ms. On failure: shows an error and clears the password.
   function handleSignIn() {
     const email = document.getElementById('emailInput').value.trim();
     const pass  = document.getElementById('passwordInput').value;
@@ -640,6 +680,9 @@
     }, 750);
   }
 
+  // ── Password visibility toggle ────────────────────────────────────────
+  // togglePassword — switches the password input between type="password"
+  // (masked) and type="text" (visible), and updates the button label.
   function togglePassword() {
     const pw  = document.getElementById('passwordInput');
     const btn = document.getElementById('toggleBtn');
@@ -647,6 +690,9 @@
     btn.textContent = pw.type === 'password' ? 'show' : 'hide';
   }
 
+  // ── Enter-key shortcut ────────────────────────────────────────────────
+  // Submits the currently visible step when the user presses Enter,
+  // so the form is keyboard-navigable without clicking the buttons.
   document.addEventListener('keydown', e => {
     if (e.key !== 'Enter') return;
     document.getElementById('step2').style.display !== 'none' ? handleSignIn() : handleNext();
