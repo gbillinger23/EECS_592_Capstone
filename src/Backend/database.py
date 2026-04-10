@@ -28,6 +28,7 @@ class PacketDatabase:
         self.cursor  = None
         self.init_db()
         self.create_feedback_table()
+        self.create_case_table()
 
     def init_db(self):
         """Initialize database and create table if it doesn't exist."""
@@ -77,6 +78,23 @@ class PacketDatabase:
             """)
             self.conn.commit()
 
+    def create_case_table(self):
+        with self._lock:
+            self.cursor.execute("""
+                CREATE TABLE IF NOT EXISTS cases (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT,
+                attack_type TEXT,
+                severity TEXT,
+                status TEXT,
+                packets TEXT,
+                countermeasures TEXT,
+                notes TEXT,
+                timestamp TEXT
+                )
+            """)
+            self.conn.commit()
+
     def get_all_packets(self):
         """Retrieve all packets from database (thread-safe)."""
         with self._lock:
@@ -96,6 +114,61 @@ class PacketDatabase:
             """, (packet_id, rule_id, feedback, note, timestamp))
             self.conn.commit()
 
+    def insert_case(self, title, attack_type, severity, status, packets, countermeasures, notes):
+        with self._lock:
+            self.cursor.execute("""
+                INSERT INTO cases (title, attack_type, severity, status, packets, countermeasures, notes, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                title,
+                attack_type,
+                severity,
+                status,
+                packets,
+                countermeasures,
+                notes,
+                datetime.utcnow().isoformat()
+            ))
+            self.conn.commit()
+    
+    def get_cases(self):
+        with self._lock:
+            self.cursor.execute("SELECT * FROM cases ORDER BY id DESC")
+            rows = self.cursor.fetchall()
+
+            # Convert tuple rows → dicts manually
+            cases = []
+            for r in rows:
+                cases.append({
+                    "id": r[0],
+                    "title": r[1],
+                    "attack_type": r[2],
+                    "severity": r[3],
+                    "status": r[4],
+                    "packets": r[5],
+                    "countermeasures": r[6],
+                    "notes": r[7],
+                    "timestamp": r[8]
+                })
+            return cases
+        
+    def get_case(self, case_id):
+        with self._lock:
+            self.cursor.execute("SELECT * FROM cases WHERE id=?", (case_id,))
+            r = self.cursor.fetchone()
+            if not r:
+                return None
+            return {
+                "id": r[0],
+                "title": r[1],
+                "attack_type": r[2],
+                "severity": r[3],
+                "status": r[4],
+                "packets": r[5],
+                "countermeasures": r[6],
+                "notes": r[7],
+                "timestamp": r[8]
+            }
 
     def close(self):
         """Close database connection."""

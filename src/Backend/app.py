@@ -376,6 +376,29 @@ def api_feedback_get():
         for r in rows
     ])
 
+@app.route("/api/cases", methods=["POST"])
+def create_case():
+    data = request.json
+    db.insert_case(
+        data["title"],
+        data["attack_type"],
+        data["severity"],
+        data["status"],
+        data["packets"],
+        data["countermeasures"],
+        data["notes"]
+    )
+    return jsonify({"status": "ok"})
+
+@app.route("/api/cases", methods=["GET"])
+def get_cases():
+    rows = db.get_cases()
+    return jsonify(rows)
+
+@app.route("/api/cases/<int:case_id>", methods=["GET"])
+def get_case(case_id):
+    row = db.get_case(case_id)
+    return jsonify(row)
 
 # ══ AWS ROUTES ════════════════════════════════════════════════════════════════
 

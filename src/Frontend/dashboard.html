@@ -969,6 +969,32 @@ footer a:hover{color:var(--gold)}
         </table>
       </div>
     </div>
+
+    <div class="panel full">
+      <div class="ph">
+        <div class="pt blue-t"><div class="dot"></div>Analyst Case Management</div>
+        <button class="nav-btn small" onclick="openNewCaseModal()">New Case</button>
+      </div>
+    
+      <div class="tscroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Case ID</th>
+              <th>Title</th>
+              <th>Severity</th>
+              <th>Status</th>
+              <th>Packets</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="caseTableBody">
+            <tr><td colspan="7"><div class="empty-state">No cases yet</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>    
   </div>  
 
   <div id="feedbackModal" class="modal hidden">
@@ -999,6 +1025,84 @@ footer a:hover{color:var(--gold)}
       </div>
     </div>
   </div>
+
+  <div class="rm-modal-bg" id="newCaseModal" onclick="if(event.target===this)closeNewCaseModal()">
+    <div class="rm-modal">
+  
+      <h3>Create New Case</h3>
+  
+      <div class="rm-field">
+        <label class="rm-label">Title *</label>
+        <input class="rm-input" id="caseTitle" type="text" placeholder="Short case title">
+      </div>
+  
+      <div class="rm-row">
+        <div class="rm-field">
+          <label class="rm-label">Attack Type</label>
+          <input class="rm-input" id="caseAttackType" type="text" placeholder="e.g. Port Scan, Malware, Recon">
+        </div>
+  
+        <div class="rm-field">
+          <label class="rm-label">Severity</label>
+          <select class="rm-select" id="caseSeverity">
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium" selected>Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+      </div>
+  
+      <div class="rm-row">
+        <div class="rm-field">
+          <label class="rm-label">Status</label>
+          <select class="rm-select" id="caseStatus">
+            <option value="open">Open</option>
+            <option value="closed">Closed</option>
+            <option value="escalated">Escalated</option>
+          </select>
+        </div>
+  
+        <div class="rm-field">
+          <label class="rm-label">Related Packets / Alerts</label>
+          <input class="rm-input" id="casePackets" type="text" placeholder="Comma-separated packet IDs or S3 keys">
+        </div>
+      </div>
+  
+      <div class="rm-field">
+        <label class="rm-label">Countermeasures Taken</label>
+        <textarea class="rm-input" id="caseCountermeasures" placeholder="What actions were taken?"></textarea>
+      </div>
+  
+      <div class="rm-field">
+        <label class="rm-label">Notes</label>
+        <textarea class="rm-input" id="caseNotes" placeholder="Investigation notes, observations, etc."></textarea>
+      </div>
+  
+      <div class="rm-actions">
+        <button class="rm-btn-cancel" onclick="closeNewCaseModal()">Cancel</button>
+        <button class="rm-btn-save" onclick="saveCase()">Save</button>
+      </div>
+    
+    </div>
+  </div>
+
+  <!-- VIEW CASE MODAL -->
+  <div class="rm-modal-bg" id="viewCaseModal" onclick="if(event.target===this)closeViewCaseModal()">
+    <div class="rm-modal">
+  
+      <h3>Case Details</h3>
+  
+      <div id="caseDetailContent" class="rm-field" style="display:flex;flex-direction:column;gap:1rem;">
+        <!-- Populated dynamically -->
+      </div>
+  
+      <div class="rm-actions">
+        <button class="rm-btn-cancel" onclick="closeViewCaseModal()">Close</button>
+      </div>
+  
+    </div>
+  </div>   
 
   <!-- VIEW FEEDBACK MODAL -->
   <div id="viewFeedbackModal" class="modal hidden">
@@ -1527,6 +1631,64 @@ async function updateFeedbackSummaryPanel() {
   document.getElementById("fbBenignPanel").textContent = benign;
 }
 
+// ── Fetch Case Handler ─────────────────────────────────────────────────
+async function fetchCases() {
+  const res = await fetch(`${API}/api/cases`);
+  const rows = await res.json();
+
+  const tbody = document.getElementById("caseTableBody");
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">No cases yet</div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(c => `
+    <tr>
+      <td class="dim">${c.id}</td>
+      <td>${c.title}</td>
+      <td>${c.severity}</td>
+      <td>${c.status}</td>
+      <td>${c.packets}</td>
+      <td class="dim">${c.timestamp}</td>
+      <td>
+        <button class="nav-btn small" onclick="openCaseDetail(${c.id})">View</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+
+// ── New Case Handlers ─────────────────────────────────────────────────
+function openNewCaseModal() {
+  document.getElementById("newCaseModal").style.display = "flex";
+}
+
+function closeNewCaseModal() {
+  document.getElementById("newCaseModal").style.display = "none";
+}
+
+async function saveCase() {
+  const payload = {
+    title: document.getElementById("caseTitle").value,
+    attack_type: document.getElementById("caseAttackType").value,
+    severity: document.getElementById("caseSeverity").value,
+    status: document.getElementById("caseStatus").value,
+    packets: document.getElementById("casePackets").value,
+    countermeasures: document.getElementById("caseCountermeasures").value,
+    notes: document.getElementById("caseNotes").value
+  };
+
+  await fetch(`${API}/api/cases`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(payload)
+  });
+
+  closeNewCaseModal();
+  fetchCases();
+}
+
 // ── Fetch AWS ingested ────────────────────────────────────────────────────────
 async function fetchAwsIngested(){
   try{
@@ -1617,6 +1779,61 @@ function closeViewFeedbackModal() {
   document.getElementById("viewFeedbackModal").classList.add("hidden");
 }
 
+// View the details of a given case
+async function openCaseDetail(caseId) {
+  const res = await fetch(`${API}/api/cases/${caseId}`);
+  const c = await res.json();
+
+  document.getElementById("caseDetailContent").innerHTML = `
+    <div class="rm-field">
+      <label class="rm-label">Title</label>
+      <div class="rm-input">${c.title}</div>
+    </div>
+
+    <div class="rm-row">
+      <div class="rm-field">
+        <label class="rm-label">Attack Type</label>
+        <div class="rm-input">${c.attack_type || "—"}</div>
+      </div>
+      <div class="rm-field">
+        <label class="rm-label">Severity</label>
+        <div class="rm-input">${c.severity}</div>
+      </div>
+    </div>
+
+    <div class="rm-row">
+      <div class="rm-field">
+        <label class="rm-label">Status</label>
+        <div class="rm-input">${c.status}</div>
+      </div>
+      <div class="rm-field">
+        <label class="rm-label">Packets</label>
+        <div class="rm-input">${c.packets || "—"}</div>
+      </div>
+    </div>
+
+    <div class="rm-field">
+      <label class="rm-label">Countermeasures</label>
+      <div class="rm-input">${c.countermeasures || "—"}</div>
+    </div>
+
+    <div class="rm-field">
+      <label class="rm-label">Notes</label>
+      <div class="rm-input">${c.notes || "—"}</div>
+    </div>
+
+    <div class="rm-field">
+      <label class="rm-label">Created</label>
+      <div class="rm-input">${c.timestamp}</div>
+    </div>
+  `;
+
+  document.getElementById("viewCaseModal").style.display = "flex";
+}
+
+function closeViewCaseModal() {
+  document.getElementById("viewCaseModal").style.display = "none";
+}
 
 // ── Tab Switching ───────────────────────────────────────────────
 document.querySelectorAll('.tab').forEach(btn => {
@@ -1725,6 +1942,7 @@ async function refreshAll(){
     fetchAwsStats(),
     fetchAwsAlerts(),
     updateFeedbackSummaryPanel(),
+    fetchCases(),
     fetchAwsIngested(),
   ]);
 }
