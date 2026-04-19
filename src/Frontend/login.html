@@ -570,19 +570,14 @@
 </style>
 
 <script>
-  // ── Hardcoded credentials (demo only) ────────────────────────────────
-  // Two valid accounts used for front-end authentication simulation.
-  // A real deployment would validate credentials against a server API.
-  const VALID = [
-    { email: 'admin@netguard.io',  password: 'netguard2026' },
-    { email: 'client@netguard.io', password: 'client2026'   },
-  ];
-  // Relative path to the dashboard page reached after a successful login.
-  const DASHBOARD = '../Frontend/dashboard.html';
+  // ── NetGuard Authentication — JWT-backed login ────────────────────────
+  // Calls POST /auth/login on the Flask backend (localhost:5000).
+  // On success, stores the JWT + user info in localStorage and redirects.
+  const API_BASE  = 'http://localhost:5000';
+  const DASHBOARD = 'dashboard.html';
+  const AUDIT_URL = 'audit_viewer.html';
 
   // ── Error display helpers ─────────────────────────────────────────────
-  // showErr — reveals the error message element, highlights the input in
-  // red, and plays a shake animation to draw the user's attention.
   function showErr(errId, inputId, msg) {
     const el = document.getElementById(errId);
     const inp = document.getElementById(inputId);
@@ -591,29 +586,21 @@
     inp.style.animation = 'none'; void inp.offsetWidth;
     inp.style.animation = 'shake 0.35s ease';
   }
-  // clearErr — removes the error state from both the label and the input.
   function clearErr(errId, inputId) {
     document.getElementById(errId).classList.remove('show');
     document.getElementById(inputId).classList.remove('bad');
   }
-  // ── Button state helpers ──────────────────────────────────────────────
-  // setLoading — disables the button and updates its label while the
-  // simulated async check is running (setTimeout).
   function setLoading(btnId, labelId, txt) {
     document.getElementById(btnId).disabled = true;
     document.getElementById(labelId).textContent = txt;
   }
-  // resetBtn — re-enables the button and restores its original label text.
   function resetBtn(btnId, labelId, txt) {
     const b = document.getElementById(btnId);
     b.disabled = false; b.classList.remove('success');
     document.getElementById(labelId).textContent = txt;
   }
 
-  // ── Step 1 → Step 2 transition ────────────────────────────────────────
-  // handleNext — validates the email format, looks it up in VALID[], then
-  // hides step 1 and reveals the password step with the email chip filled.
-  // A 650 ms delay simulates a network lookup.
+  // ── Step 1: email format validation (no server call — prevents enumeration)
   function handleNext() {
     const email = document.getElementById('emailInput').value.trim();
     clearErr('emailErr', 'emailInput');
@@ -621,26 +608,18 @@
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       showErr('emailErr', 'emailInput', 'Enter a valid email address.'); return;
     }
-    setLoading('nextBtn', 'nextLabel', 'Checking…');
-    setTimeout(() => {
-      const match = VALID.find(c => c.email.toLowerCase() === email.toLowerCase());
-      resetBtn('nextBtn', 'nextLabel', 'Next');
-      if (!match) { showErr('emailErr', 'emailInput', "No NetGuard account found for that email."); return; }
-      document.getElementById('chipAvatar').textContent = email[0].toUpperCase();
-      document.getElementById('chipAddr').textContent   = email;
-      const s1 = document.getElementById('step1');
-      const s2 = document.getElementById('step2');
-      s1.style.display = 'none';
-      s2.style.display = 'block';
-      s2.classList.remove('step-in'); void s2.offsetWidth; s2.classList.add('step-in');
-      document.getElementById('formHeading').innerHTML = 'Enter your<br>password';
-      setTimeout(() => document.getElementById('passwordInput').focus(), 40);
-    }, 650);
+    document.getElementById('chipAvatar').textContent = email[0].toUpperCase();
+    document.getElementById('chipAddr').textContent   = email;
+    const s1 = document.getElementById('step1');
+    const s2 = document.getElementById('step2');
+    s1.style.display = 'none';
+    s2.style.display = 'block';
+    s2.classList.remove('step-in'); void s2.offsetWidth; s2.classList.add('step-in');
+    document.getElementById('formHeading').innerHTML = 'Enter your<br>password';
+    setTimeout(() => document.getElementById('passwordInput').focus(), 40);
   }
 
   // ── Step 2 → Step 1 back navigation ──────────────────────────────────
-  // goBack — hides the password step, resets its state (clears password
-  // value + errors), and restores step 1 with a fade-in animation.
   function goBack() {
     document.getElementById('step2').style.display = 'none';
     const s1 = document.getElementById('step1');
@@ -653,36 +632,52 @@
     setTimeout(() => document.getElementById('emailInput').focus(), 40);
   }
 
-  // ── Sign-in submission ────────────────────────────────────────────────
-  // handleSignIn — verifies the email+password pair against VALID[].
-  // On success: turns the button green and redirects to the dashboard
-  // after 700 ms. On failure: shows an error and clears the password.
-  function handleSignIn() {
+  // ── Step 2: authenticate against the Flask backend ───────────────────
+  // POST /auth/login → { token, user: { userId, email, role } }
+  // JWT and user info are persisted in localStorage so subsequent pages
+  // can read them without another round-trip.
+  async function handleSignIn() {
     const email = document.getElementById('emailInput').value.trim();
     const pass  = document.getElementById('passwordInput').value;
     clearErr('pwErr', 'passwordInput');
     if (!pass) { showErr('pwErr', 'passwordInput', 'Enter your password.'); return; }
+
     setLoading('signInBtn', 'signInLabel', 'Signing in…');
-    setTimeout(() => {
-      const match = VALID.find(
-        c => c.email.toLowerCase() === email.toLowerCase() && c.password === pass
-      );
-      if (match) {
+
+    try {
+      const resp = await fetch(`${API_BASE}/auth/login`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email, password: pass }),
+      });
+
+      const data = await resp.json();
+
+      if (resp.ok && data.token) {
+        // Persist JWT and user metadata for all subsequent pages
+        localStorage.setItem('ng_token', data.token);
+        localStorage.setItem('ng_user',  JSON.stringify(data.user));
+
         document.getElementById('signInBtn').classList.add('success');
         document.getElementById('signInLabel').textContent = 'Access granted ✓';
-        setTimeout(() => { window.location.href = DASHBOARD; }, 700);
+
+        // Admins go to the Audit Viewer; other roles go to the dashboard
+        const dest = data.user.role === 'admin' ? AUDIT_URL : DASHBOARD;
+        setTimeout(() => { window.location.href = dest; }, 700);
       } else {
         resetBtn('signInBtn', 'signInLabel', 'Sign In');
-        showErr('pwErr', 'passwordInput', 'Wrong password. Try again.');
+        showErr('pwErr', 'passwordInput', data.error || 'Authentication failed. Try again.');
         document.getElementById('passwordInput').value = '';
         setTimeout(() => document.getElementById('passwordInput').focus(), 40);
       }
-    }, 750);
+    } catch (err) {
+      resetBtn('signInBtn', 'signInLabel', 'Sign In');
+      showErr('pwErr', 'passwordInput', 'Cannot reach server — is NetGuard running?');
+      console.error('[login] fetch error:', err);
+    }
   }
 
   // ── Password visibility toggle ────────────────────────────────────────
-  // togglePassword — switches the password input between type="password"
-  // (masked) and type="text" (visible), and updates the button label.
   function togglePassword() {
     const pw  = document.getElementById('passwordInput');
     const btn = document.getElementById('toggleBtn');
@@ -691,12 +686,29 @@
   }
 
   // ── Enter-key shortcut ────────────────────────────────────────────────
-  // Submits the currently visible step when the user presses Enter,
-  // so the form is keyboard-navigable without clicking the buttons.
   document.addEventListener('keydown', e => {
     if (e.key !== 'Enter') return;
     document.getElementById('step2').style.display !== 'none' ? handleSignIn() : handleNext();
   });
+
+  // ── Auto-redirect if already logged in ───────────────────────────────
+  (function checkExistingSession() {
+    const token = localStorage.getItem('ng_token');
+    const user  = JSON.parse(localStorage.getItem('ng_user') || 'null');
+    if (token && user) {
+      // Verify the token is still valid before redirecting
+      fetch(`${API_BASE}/auth/me`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).then(r => {
+        if (r.ok) {
+          window.location.href = user.role === 'admin' ? AUDIT_URL : DASHBOARD;
+        } else {
+          localStorage.removeItem('ng_token');
+          localStorage.removeItem('ng_user');
+        }
+      }).catch(() => {/* server offline — stay on login page */});
+    }
+  })();
 </script>
 </body>
 </html>

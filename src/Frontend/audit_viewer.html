@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetGuard — Audit Log Viewer</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink:        #0d1b2e;
+    --cream:      #f5f0e8;
+    --gold:       #c8a96e;
+    --gold-light: #e2c98a;
+    --muted:      #6a82a0;
+    --border:     rgba(200,169,110,0.2);
+    --surface:    #111f35;
+    --success:    #2e7d52;
+    --failure:    #c0392b;
+    --navy-mid:   #152540;
+  }
+
+  body {
+    background: var(--ink);
+    color: var(--cream);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    min-height: 100vh;
+  }
+
+  /* ── NAVBAR ──────────────────────────────────────────────────────────── */
+  .navbar {
+    background: #080f1c;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .nav-brand {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #fff;
+  }
+  .nav-brand span { color: var(--gold); }
+  .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+  }
+  .nav-role {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    border: 1px solid var(--border);
+    padding: 0.25rem 0.7rem;
+  }
+  .nav-user { font-size: 0.72rem; color: var(--muted); }
+  .btn-logout {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    padding: 0.35rem 0.8rem;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .btn-logout:hover { border-color: var(--gold); color: var(--cream); }
+
+  /* ── MAIN LAYOUT ─────────────────────────────────────────────────────── */
+  .main { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+
+  .page-header {
+    margin-bottom: 2rem;
+  }
+  .page-header h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2rem;
+    font-weight: 300;
+    color: var(--cream);
+    margin-bottom: 0.3rem;
+  }
+  .page-header p { color: var(--muted); font-size: 0.72rem; letter-spacing: 0.05em; }
+
+  /* ── FILTERS CARD ────────────────────────────────────────────────────── */
+  .filters-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .filters-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .filter-group { display: flex; flex-direction: column; gap: 0.35rem; }
+  .filter-label {
+    font-size: 0.58rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .filter-input, .filter-select {
+    background: #0d1b2e;
+    border: 1px solid var(--border);
+    color: var(--cream);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+    border-radius: 0;
+  }
+  .filter-input:focus, .filter-select:focus { border-color: var(--gold); }
+  .filter-select option { background: #0d1b2e; }
+  .date-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr auto;
+    gap: 1rem;
+    align-items: end;
+  }
+  .btn-apply, .btn-reset {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    border: none;
+    transition: background 0.2s;
+  }
+  .btn-apply { background: var(--gold); color: var(--ink); }
+  .btn-apply:hover { background: var(--gold-light); }
+  .btn-reset { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  .btn-reset:hover { border-color: var(--gold); color: var(--cream); }
+
+  /* ── TOOLBAR (count + export) ───────────────────────────────────────── */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+  .result-count { font-size: 0.7rem; color: var(--muted); }
+  .result-count strong { color: var(--gold); }
+  .btn-export {
+    background: transparent;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.45rem 1rem;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .btn-export:hover { background: var(--gold); color: var(--ink); }
+  .btn-export:disabled { opacity: 0.4; cursor: default; }
+
+  /* ── TABLE ───────────────────────────────────────────────────────────── */
+  .table-wrap {
+    overflow-x: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+  }
+  thead {
+    background: #080f1c;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    padding: 0.8rem 1rem;
+    text-align: left;
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+    font-weight: 400;
+  }
+  td {
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid rgba(200,169,110,0.08);
+    vertical-align: middle;
+    color: var(--cream);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(200,169,110,0.04); }
+
+  .ts-cell  { color: var(--muted); font-size: 0.7rem; white-space: nowrap; }
+  .email-cell { font-size: 0.73rem; }
+  .action-badge {
+    display: inline-block;
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+    padding: 0.2rem 0.55rem;
+    border: 1px solid var(--border);
+    color: var(--gold-light);
+    white-space: nowrap;
+  }
+  .resource-cell { color: var(--muted); font-size: 0.7rem; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ip-cell { color: var(--muted); font-size: 0.7rem; }
+
+  .status-badge {
+    display: inline-block;
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    padding: 0.22rem 0.6rem;
+    font-weight: 500;
+  }
+  .status-badge.success { background: rgba(46,125,82,0.2); color: #4caf82; border: 1px solid rgba(46,125,82,0.4); }
+  .status-badge.failure { background: rgba(192,57,43,0.2); color: #e57373; border: 1px solid rgba(192,57,43,0.4); }
+
+  /* ── PAGINATION ──────────────────────────────────────────────────────── */
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 1rem;
+    padding: 0.5rem 0;
+  }
+  .page-info { font-size: 0.68rem; color: var(--muted); }
+  .page-btns { display: flex; gap: 0.5rem; }
+  .btn-page {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--cream);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    padding: 0.4rem 0.9rem;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .btn-page:hover:not(:disabled) { border-color: var(--gold); }
+  .btn-page:disabled { opacity: 0.35; cursor: default; }
+
+  /* ── EMPTY / LOADING / ERROR STATES ─────────────────────────────────── */
+  .state-row td {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--muted);
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+  }
+  .spinner {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border: 2px solid rgba(200,169,110,0.2);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 0.5rem;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--cream);
+    font-size: 0.72rem;
+    padding: 0.8rem 1.2rem;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s, transform 0.3s;
+    z-index: 999;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- ══ NAVBAR ════════════════════════════════════════════════════════════ -->
+<nav class="navbar">
+  <div class="nav-brand">Net<span>Guard</span> — Audit Logs</div>
+  <div class="nav-right">
+    <span class="nav-role" id="navRole">ADMIN</span>
+    <span class="nav-user" id="navUser">—</span>
+    <button class="btn-logout" onclick="logout()">Sign Out</button>
+  </div>
+</nav>
+
+<!-- ══ MAIN ══════════════════════════════════════════════════════════════ -->
+<main class="main">
+  <div class="page-header">
+    <h1>Audit History</h1>
+    <p>All user actions logged to DynamoDB · TTL 90 days · S3 archive after 30 days</p>
+  </div>
+
+  <!-- ── FILTERS ──────────────────────────────────────────────────────── -->
+  <div class="filters-card">
+    <div class="filters-grid">
+      <div class="filter-group">
+        <label class="filter-label">Search (email or resource ID)</label>
+        <input class="filter-input" id="fSearch" type="text" placeholder="user@netguard.io or rule_id…">
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Action</label>
+        <select class="filter-select" id="fAction">
+          <option value="">All actions</option>
+          <option>LOGIN</option><option>LOGOUT</option><option>SEARCH</option>
+          <option>RULE_EDIT</option><option>ALERT_ACK</option>
+          <option>DASHBOARD_VIEW</option><option>EXPORT</option>
+          <option>SETTINGS_CHANGE</option><option>UNAUTHORIZED_ACCESS</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Status</label>
+        <select class="filter-select" id="fStatus">
+          <option value="">All statuses</option>
+          <option>SUCCESS</option>
+          <option>FAILURE</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">User ID</label>
+        <input class="filter-input" id="fUserId" type="text" placeholder="UUID…">
+      </div>
+    </div>
+    <div class="date-row">
+      <div class="filter-group">
+        <label class="filter-label">Date from</label>
+        <input class="filter-input" id="fDateFrom" type="datetime-local">
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Date to</label>
+        <input class="filter-input" id="fDateTo" type="datetime-local">
+      </div>
+      <div></div>
+      <div></div>
+      <div style="display:flex;gap:0.5rem;align-items:flex-end;">
+        <button class="btn-reset" onclick="resetFilters()">Reset</button>
+        <button class="btn-apply" onclick="applyFilters()">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TOOLBAR ──────────────────────────────────────────────────────── -->
+  <div class="toolbar">
+    <span class="result-count" id="resultCount">Loading…</span>
+    <button class="btn-export" id="exportBtn" onclick="exportCSV()">Export CSV</button>
+  </div>
+
+  <!-- ── TABLE ────────────────────────────────────────────────────────── -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>User</th>
+          <th>Role</th>
+          <th>Action</th>
+          <th>Resource</th>
+          <th>IP Address</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="auditBody">
+        <tr class="state-row">
+          <td colspan="7"><span class="spinner"></span>Loading audit logs…</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── PAGINATION ─────────────────────────────────────────────────────── -->
+  <div class="pagination">
+    <span class="page-info" id="pageInfo">Page 1</span>
+    <div class="page-btns">
+      <button class="btn-page" id="prevBtn" onclick="prevPage()" disabled>← Prev</button>
+      <button class="btn-page" id="nextBtn" onclick="nextPage()" disabled>Next →</button>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── Constants ─────────────────────────────────────────────────────────
+  const API_BASE  = 'http://localhost:5000';
+  const PAGE_SIZE = 25;
+
+  // ── Auth guard ───────────────────────────────────────────────────────
+  const token = localStorage.getItem('ng_token');
+  const user  = JSON.parse(localStorage.getItem('ng_user') || 'null');
+
+  if (!token || !user) {
+    window.location.href = 'login.html';
+  } else if (user.role !== 'admin') {
+    window.location.href = 'unauthorized.html';
+  }
+
+  // ── Populate navbar ───────────────────────────────────────────────────
+  document.getElementById('navRole').textContent = (user?.role || 'UNKNOWN').toUpperCase();
+  document.getElementById('navUser').textContent = user?.email || '—';
+
+  // ── Pagination state ──────────────────────────────────────────────────
+  let keyStack    = [null];   // stack of DynamoDB LastEvaluatedKey tokens
+  let currentPage = 1;
+  let totalShown  = 0;
+  let activeFilters = {};
+
+  // ── Auth headers helper ───────────────────────────────────────────────
+  function authHeaders() {
+    return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+  }
+
+  // ── Fetch and render a page of audit logs ─────────────────────────────
+  async function loadPage(lastKey = null) {
+    setTableState('loading');
+
+    const params = new URLSearchParams({
+      page_size: PAGE_SIZE,
+      ...activeFilters,
+    });
+    if (lastKey) params.set('last_key', JSON.stringify(lastKey));
+
+    try {
+      const resp = await fetch(`${API_BASE}/audit/logs?${params}`, {
+        headers: authHeaders(),
+      });
+
+      if (resp.status === 401) { redirectToLogin(); return; }
+      if (resp.status === 403) { window.location.href = 'unauthorized.html'; return; }
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+      const data = await resp.json();
+      renderTable(data.items || []);
+      totalShown = data.count || 0;
+
+      // Update pagination controls
+      const hasNext = !!data.lastEvaluatedKey;
+      document.getElementById('nextBtn').disabled = !hasNext;
+      document.getElementById('prevBtn').disabled = currentPage <= 1;
+      document.getElementById('pageInfo').textContent =
+        `Page ${currentPage}  ·  ${totalShown} items this page`;
+      document.getElementById('resultCount').innerHTML =
+        `Showing <strong>${totalShown}</strong> records on page ${currentPage}`;
+
+      // Push new key onto stack so Next works
+      if (hasNext) {
+        if (keyStack.length < currentPage + 1) {
+          keyStack.push(data.lastEvaluatedKey);
+        } else {
+          keyStack[currentPage] = data.lastEvaluatedKey;
+        }
+      }
+    } catch (err) {
+      setTableState('error', err.message);
+      document.getElementById('resultCount').textContent = 'Error loading records';
+      console.error('[audit] load error:', err);
+    }
+  }
+
+  // ── Render rows ───────────────────────────────────────────────────────
+  function renderTable(items) {
+    const tbody = document.getElementById('auditBody');
+    if (!items.length) {
+      tbody.innerHTML = '<tr class="state-row"><td colspan="7">No audit records match the current filters.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = items.map(item => {
+      const ts        = new Date(item.timestamp).toLocaleString('en-US', { hour12: false });
+      const statusCls = (item.status === 'SUCCESS') ? 'success' : 'failure';
+      const resource  = item.resourceId || '—';
+      return `
+        <tr>
+          <td class="ts-cell">${ts}</td>
+          <td class="email-cell">${escHtml(item.userEmail || '—')}</td>
+          <td><span style="color:var(--muted);font-size:0.7rem">${escHtml(item.role || '—')}</span></td>
+          <td><span class="action-badge">${escHtml(item.action)}</span></td>
+          <td class="resource-cell" title="${escHtml(resource)}">${escHtml(resource)}</td>
+          <td class="ip-cell">${escHtml(item.ipAddress || '—')}</td>
+          <td><span class="status-badge ${statusCls}">${item.status}</span></td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // ── Table state helpers ───────────────────────────────────────────────
+  function setTableState(state, msg = '') {
+    const tbody = document.getElementById('auditBody');
+    if (state === 'loading') {
+      tbody.innerHTML = '<tr class="state-row"><td colspan="7"><span class="spinner"></span>Loading…</td></tr>';
+    } else if (state === 'error') {
+      tbody.innerHTML = `<tr class="state-row"><td colspan="7" style="color:#e57373">Error: ${escHtml(msg)}</td></tr>`;
+    }
+  }
+
+  // ── Pagination ────────────────────────────────────────────────────────
+  function nextPage() {
+    currentPage++;
+    loadPage(keyStack[currentPage - 1]);
+  }
+  function prevPage() {
+    if (currentPage <= 1) return;
+    currentPage--;
+    loadPage(keyStack[currentPage - 1]);
+  }
+
+  // ── Filter controls ───────────────────────────────────────────────────
+  function applyFilters() {
+    activeFilters = {};
+    const search   = document.getElementById('fSearch').value.trim();
+    const action   = document.getElementById('fAction').value;
+    const status   = document.getElementById('fStatus').value;
+    const userId   = document.getElementById('fUserId').value.trim();
+    const dateFrom = document.getElementById('fDateFrom').value;
+    const dateTo   = document.getElementById('fDateTo').value;
+
+    if (search)   activeFilters.search    = search;
+    if (action)   activeFilters.action    = action;
+    if (status)   activeFilters.status    = status;
+    if (userId)   activeFilters.user_id   = userId;
+    if (dateFrom) activeFilters.date_from = new Date(dateFrom).toISOString();
+    if (dateTo)   activeFilters.date_to   = new Date(dateTo).toISOString();
+
+    // Reset to page 1 on new filter
+    currentPage = 1;
+    keyStack    = [null];
+    loadPage(null);
+  }
+
+  function resetFilters() {
+    ['fSearch','fAction','fStatus','fUserId','fDateFrom','fDateTo'].forEach(id => {
+      const el = document.getElementById(id);
+      el.value = '';
+    });
+    activeFilters = {};
+    currentPage   = 1;
+    keyStack      = [null];
+    loadPage(null);
+  }
+
+  // ── CSV export ────────────────────────────────────────────────────────
+  async function exportCSV() {
+    const btn = document.getElementById('exportBtn');
+    btn.disabled = true;
+    btn.textContent = 'Exporting…';
+    showToast('Generating CSV — please wait…');
+
+    const params = new URLSearchParams(activeFilters);
+
+    try {
+      const resp = await fetch(`${API_BASE}/audit/export?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+      const blob     = await resp.blob();
+      const url      = URL.createObjectURL(blob);
+      const a        = document.createElement('a');
+      const filename = `netguard-audit-${new Date().toISOString().slice(0,10)}.csv`;
+      a.href     = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast(`Downloaded ${filename}`);
+    } catch (err) {
+      showToast(`Export failed: ${err.message}`, true);
+      console.error('[export] error:', err);
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = 'Export CSV';
+    }
+  }
+
+  // ── Logout ────────────────────────────────────────────────────────────
+  async function logout() {
+    try {
+      await fetch(`${API_BASE}/auth/logout`, {
+        method:  'POST',
+        headers: authHeaders(),
+      });
+    } catch (_) { /* ignore — network error */ }
+    localStorage.removeItem('ng_token');
+    localStorage.removeItem('ng_user');
+    window.location.href = 'login.html';
+  }
+
+  function redirectToLogin() {
+    localStorage.removeItem('ng_token');
+    localStorage.removeItem('ng_user');
+    window.location.href = 'login.html';
+  }
+
+  // ── Toast notification ────────────────────────────────────────────────
+  let _toastTimer;
+  function showToast(msg, isError = false) {
+    const el = document.getElementById('toast');
+    el.textContent    = msg;
+    el.style.color    = isError ? '#e57373' : 'var(--cream)';
+    el.classList.add('show');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+  }
+
+  // ── Utility ───────────────────────────────────────────────────────────
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ── Initial load ──────────────────────────────────────────────────────
+  loadPage(null);
+</script>
+</body>
+</html>

@@ -35,6 +35,33 @@ from botocore.exceptions import BotoCoreError, ClientError
 app = Flask(__name__)
 CORS(app)
 
+# ── Auth & Audit System — blueprints + one-time DynamoDB setup ───────────────
+try:
+    from routes.auth_routes  import auth_bp
+    from routes.audit_routes import audit_bp
+
+    app.register_blueprint(auth_bp,  url_prefix="/auth")
+    app.register_blueprint(audit_bp, url_prefix="/audit")
+    print("[STARTUP] Auth and Audit blueprints registered ✅")
+
+    # Create DynamoDB tables (idempotent) and seed demo users if table is empty.
+    # Wrapped in a thread so a slow/unreachable DynamoDB never delays startup.
+    def _dynamo_init():
+        try:
+            from services.dynamodb_service import setup_tables, seed_demo_users
+            result = setup_tables()
+            print(f"[STARTUP] DynamoDB tables: audit={result['audit']}  users={result['users']}")
+            seed_demo_users()
+        except Exception as _e:
+            print(f"[STARTUP] ⚠️  DynamoDB init skipped (offline?): {_e}")
+
+    import threading as _threading
+    _threading.Thread(target=_dynamo_init, daemon=True).start()
+
+except ImportError as _ie:
+    print(f"[STARTUP] ⚠️  Auth blueprints not loaded (missing dependency?): {_ie}")
+    print("[STARTUP]    Run:  pip install PyJWT bcrypt  then restart")
+
 db = PacketDatabase()
 
 AWS_REGION = os.environ.get("AWS_DEFAULT_REGION", "us-east-2")

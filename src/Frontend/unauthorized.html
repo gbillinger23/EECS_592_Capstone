@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetGuard — Access Denied</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Barlow:wght@300;400;500&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink:   #0d1b2e;
+    --cream: #f5f0e8;
+    --gold:  #c8a96e;
+    --rust:  #c0392b;
+    --muted: #6a82a0;
+    --border: rgba(200,169,110,0.2);
+  }
+  body {
+    background: var(--ink);
+    color: var(--cream);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .card {
+    max-width: 440px;
+    padding: 3rem 2.5rem;
+    border: 1px solid rgba(192,57,43,0.35);
+    background: #111f35;
+  }
+  .code {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 5rem;
+    font-weight: 300;
+    color: rgba(192,57,43,0.6);
+    line-height: 1;
+    margin-bottom: 0.5rem;
+  }
+  h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.6rem;
+    font-weight: 300;
+    color: var(--cream);
+    margin-bottom: 1rem;
+  }
+  p {
+    font-size: 0.72rem;
+    color: var(--muted);
+    line-height: 1.8;
+    letter-spacing: 0.04em;
+    margin-bottom: 2rem;
+  }
+  .divider {
+    height: 1px;
+    background: rgba(192,57,43,0.25);
+    margin: 1.5rem 0;
+  }
+  .btn-back, .btn-logout {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 0.65rem 1.4rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s, color 0.2s;
+  }
+  .btn-back {
+    background: var(--gold);
+    color: var(--ink);
+    border: none;
+    margin-right: 0.75rem;
+  }
+  .btn-back:hover { background: #e2c98a; }
+  .btn-logout {
+    background: transparent;
+    border: 1px solid rgba(192,57,43,0.4);
+    color: var(--muted);
+  }
+  .btn-logout:hover { border-color: var(--rust); color: var(--cream); }
+  .incident-id {
+    font-size: 0.58rem;
+    color: rgba(106,130,160,0.5);
+    letter-spacing: 0.08em;
+    margin-top: 1.5rem;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="code">403</div>
+  <h1>Access Denied</h1>
+  <p>
+    You do not have permission to view this page.<br>
+    This incident has been logged in the audit trail.
+  </p>
+  <div class="divider"></div>
+  <a class="btn-back" href="dashboard.html">Return to Dashboard</a>
+  <button class="btn-logout" onclick="logout()">Sign Out</button>
+  <div class="incident-id" id="incidentId"></div>
+</div>
+
+<script>
+  // Log the attempted access and display an incident reference
+  const API_BASE = 'http://localhost:5000';
+  const token    = localStorage.getItem('ng_token');
+
+  // Generate a local incident reference for UX (actual log is in DynamoDB)
+  const incidentRef = 'NGS-' + Date.now().toString(36).toUpperCase();
+  document.getElementById('incidentId').textContent = `Incident ref: ${incidentRef}`;
+
+  async function logout() {
+    if (token) {
+      try {
+        await fetch(`${API_BASE}/auth/logout`, {
+          method:  'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+      } catch (_) {}
+    }
+    localStorage.removeItem('ng_token');
+    localStorage.removeItem('ng_user');
+    window.location.href = 'login.html';
+  }
+</script>
+</body>
+</html>

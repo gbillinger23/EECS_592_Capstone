@@ -64,7 +64,7 @@ fi
 # ── Install dependencies ────────────────────────────────
 source "$SCRIPT_DIR/venv/bin/activate"
 echo -e "${BLUE}  → Checking dependencies...${NC}"
-pip install flask flask-cors boto3 scapy pyyaml requests -q
+pip install flask flask-cors boto3 scapy pyyaml requests PyJWT bcrypt -q
 echo -e "${GREEN}  ✓ Dependencies ready${NC}"
 
 # ── AWS Credentials ─────────────────────────────────────
@@ -74,6 +74,14 @@ export AWS_ACCESS_KEY_ID="INSERT HERE"
 export AWS_SECRET_ACCESS_KEY="INSERT HERE"
 export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-east-2}"
 export LOG_BUCKET="${LOG_BUCKET:-monitoring-pcap-storage}"
+
+# ── Auth & Audit env vars ────────────────────────────────
+# JWT_SECRET: must be a long random string in production.
+# Generate one with:  python3 -c "import secrets; print(secrets.token_hex(32))"
+export JWT_SECRET="${JWT_SECRET:-CHANGE_ME_BEFORE_PRODUCTION_use_token_hex_32}"
+export DYNAMO_AUDIT_TABLE="${DYNAMO_AUDIT_TABLE:-AuditLogs}"
+export DYNAMO_USERS_TABLE="${DYNAMO_USERS_TABLE:-NetGuardUsers}"
+export ARCHIVE_BUCKET="${ARCHIVE_BUCKET:-audit-logs-archive}"
 
 if [ -z "$AWS_ACCESS_KEY_ID" ]; then
   echo ""
@@ -100,6 +108,10 @@ sudo \
   AWS_SECRET_ACCESS_KEY="INSERT HERE" \
   AWS_DEFAULT_REGION="$AWS_DEFAULT_REGION" \
   LOG_BUCKET="$LOG_BUCKET" \
+  JWT_SECRET="$JWT_SECRET" \
+  DYNAMO_AUDIT_TABLE="$DYNAMO_AUDIT_TABLE" \
+  DYNAMO_USERS_TABLE="$DYNAMO_USERS_TABLE" \
+  ARCHIVE_BUCKET="$ARCHIVE_BUCKET" \
   "$VENV" "$BACKEND/app.py" &
 BACKEND_PID=$!
 
