@@ -19,6 +19,7 @@ Invariants: none
 import sqlite3
 import threading
 from datetime import datetime
+import boto3, json
 
 class PacketDatabase:
     def __init__(self, db_name="packets.db"):
@@ -29,6 +30,8 @@ class PacketDatabase:
         self.init_db()
         self.create_feedback_table()
         self.create_case_table()
+        self.create_suppression_table()
+
 
     def init_db(self):
         """Initialize database and create table if it doesn't exist."""
@@ -64,20 +67,6 @@ class PacketDatabase:
             ))
             self.conn.commit()
 
-    def create_feedback_table(self):
-        with self._lock:
-            self.conn.execute("""
-                CREATE TABLE IF NOT EXISTS feedback (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    packet_id INTEGER,
-                    rule_id TEXT,
-                    feedback TEXT,
-                    note TEXT,
-                    timestamp TEXT
-                )
-            """)
-            self.conn.commit()
-
     def create_case_table(self):
         with self._lock:
             self.cursor.execute("""
@@ -95,6 +84,35 @@ class PacketDatabase:
             """)
             self.conn.commit()
 
+    def create_feedback_table(self):
+        with self._lock:
+            self.conn.execute("""
+                CREATE TABLE IF NOT EXISTS feedback (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    rule_id TEXT,
+                    feedback TEXT,
+                    note TEXT,
+                    src_ip TEXT,
+                    dst_ip TEXT,
+                    timestamp TEXT
+                )
+            """)
+            self.conn.commit()
+
+    def create_suppression_table(self):
+        with self._lock:
+            self.cursor.execute("""
+                CREATE TABLE IF NOT EXISTS suppressions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    rule_id TEXT,
+                    field TEXT,
+                    value TEXT,
+                    created TEXT
+                )
+            """)
+            self.conn.commit()
+
+
     def get_all_packets(self):
         """Retrieve all packets from database (thread-safe)."""
         with self._lock:
@@ -105,14 +123,6 @@ class PacketDatabase:
         with self._lock:
             cur = self.conn.execute("SELECT * FROM feedback ORDER BY id DESC")
             return cur.fetchall()
-
-    def insert_feedback(self, packet_id, rule_id, feedback, note, timestamp):
-        with self._lock:
-            self.conn.execute("""
-                INSERT INTO feedback (packet_id, rule_id, feedback, note, timestamp)
-                VALUES (?, ?, ?, ?, ?)
-            """, (packet_id, rule_id, feedback, note, timestamp))
-            self.conn.commit()
 
     def insert_case(self, title, attack_type, severity, status, packets, countermeasures, notes):
         with self._lock:
@@ -130,6 +140,44 @@ class PacketDatabase:
                 datetime.utcnow().isoformat()
             ))
             self.conn.commit()
+
+    def insert_feedback(self, rule_id, feedback, note, src_ip, dst_ip, timestamp):
+        with self._lock:
+            self.conn.execute("""
+                INSERT INTO feedback (rule_id, feedback, note, src_ip, dst_ip, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (rule_id, feedback, note, src_ip, dst_ip, timestamp))
+            self.conn.commit()
+
+    def sync_suppressions_to_s3(self):
+        print("[DEBUG] STARTING S3 CLIENT")
+        s3 = boto3.client("s3")
+        print("[DEBUG] GETTING SUPPRESSIONS")
+        rows = self.get_suppressions()
+
+        suppressions = [
+            {"rule_id": r[1], "field": r[2], "value": r[3]}
+            for r in rows
+        ]
+
+        print("[DEBUG] Syncing S3 Start")
+        s3.put_object(
+            Bucket="monitoring-pcap-storage",
+            Key="suppressions/suppressions.json",
+            Body=json.dumps(suppressions).encode("utf-8"),
+            ContentType="application/json"
+        )
+        print("[DEBUG] Syncing S3 End")
+
+    def insert_suppression(self, rule_id, field, value):
+        with self._lock:
+            self.cursor.execute("""
+                INSERT INTO suppressions (rule_id, field, value, created)
+                VALUES (?, ?, ?, datetime('now'))
+            """, (rule_id, field, value))
+            self.conn.commit()
+        print("[DEBUG] ENTERING S3 SYNC FUNCTION")
+        self.sync_suppressions_to_s3()
     
     def get_cases(self):
         with self._lock:
@@ -169,6 +217,45 @@ class PacketDatabase:
                 "notes": r[7],
                 "timestamp": r[8]
             }
+        
+    def get_suppressions(self):
+        with self._lock:
+            self.cursor.execute("SELECT id, rule_id, field, value FROM suppressions ORDER BY id DESC")
+            return self.cursor.fetchall()
+
+        
+    def delete_suppression(self, sup_id):
+        with self._lock:
+            self.cursor.execute("DELETE FROM suppressions WHERE id=?", (sup_id,))
+            self.conn.commit()
+
+    def analyze_feedback_for_suppression(self):
+        with self._lock:
+            self.cursor.execute("""
+                SELECT rule_id, src_ip, dst_ip, feedback
+                FROM feedback
+                WHERE feedback IN ('false_positive', 'benign')
+            """)
+            rows = self.cursor.fetchall()
+
+        counts = {}
+
+        for rule_id, src_ip, dst_ip, fb in rows:
+            # Count by src_ip
+            if src_ip:
+                key = (rule_id, "src_ip", src_ip)
+                counts[key] = counts.get(key, 0) + 1
+
+            # Count by dst_ip
+            if dst_ip:
+                key = (rule_id, "dst_ip", dst_ip)
+                counts[key] = counts.get(key, 0) + 1
+
+        # Add suppressions for repeated patterns
+        for (rule_id, field, value), count in counts.items():
+            if count >= 5:
+                print("[REFINEMENT] Creating suppression:", rule_id, field, value)
+                self.insert_suppression(rule_id, field, value)
 
     def close(self):
         """Close database connection."""

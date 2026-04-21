@@ -63,6 +63,13 @@ s3_cache_time = 0
 packets_processed = 0
 packets_processed_lock = threading.Lock()
 
+def is_suppressed(rule_id, metadata):
+    rows = db.get_suppressions()
+    for r in rows:
+        _, sup_rule, field, value = r
+        if sup_rule == rule_id and str(metadata.get(field)) == str(value):
+            return True
+    return False
 
 def evaluate_rules_local(metadata):
     try:
@@ -96,6 +103,10 @@ def evaluate_rules_local(metadata):
                     matched = False; break
             if op == "contains" and str(value).lower() not in str(actual).lower():
                 matched = False; break
+
+        if is_suppressed(rule.id, metadata):
+            print("[SUPPRESSION] Suppressed:", rule.id, metadata.get("src_ip"))
+            continue
 
         if matched:
             with event_lock:
@@ -347,31 +358,33 @@ def api_debug():
 @app.route("/api/feedback", methods=["POST"])
 def api_feedback():
     data = request.json or {}
-    packet_id = data.get("packet_id")
-    rule_id   = data.get("rule_id")
-    feedback  = data.get("feedback")
-    note      = data.get("note", "")
 
-    if not feedback:
-        return jsonify({"error": "feedback required"}), 400
+    rule_id  = data.get("rule_id")
+    feedback = data.get("feedback")
+    note     = data.get("note", "")
+    src_ip   = data.get("src_ip")
+    dst_ip   = data.get("dst_ip")
 
     ts = datetime.datetime.utcnow().isoformat()
 
-    db.insert_feedback(packet_id, rule_id, feedback, note, ts)
+    db.insert_feedback(rule_id, feedback, note, src_ip, dst_ip, ts)
+    db.analyze_feedback_for_suppression()
 
     return jsonify({"status": "ok"})
+
 
 @app.route("/api/feedback", methods=["GET"])
 def api_feedback_get():
     rows = db.get_all_feedback()
     return jsonify([
         {
-            "id": r[0],
-            "packet_id": r[1],
-            "rule_id": r[2],
-            "feedback": r[3],
-            "note": r[4],
-            "timestamp": r[5]
+            "id":        r[0],
+            "rule_id":   r[1],
+            "feedback":  r[2],
+            "note":      r[3],
+            "src_ip":    r[4],
+            "dst_ip":    r[5],
+            "timestamp": r[6],
         }
         for r in rows
     ])
@@ -399,6 +412,24 @@ def get_cases():
 def get_case(case_id):
     row = db.get_case(case_id)
     return jsonify(row)
+
+@app.route("/api/suppressions", methods=["GET"])
+def list_suppressions():
+    rows = db.get_suppressions()
+    return jsonify([
+        {
+            "id": r[0],
+            "rule_id": r[1],
+            "field": r[2],
+            "value": r[3]
+        }
+        for r in rows
+    ])
+
+@app.route("/api/suppressions/<int:sup_id>", methods=["DELETE"])
+def delete_suppression(sup_id):
+    db.delete_suppression(sup_id)
+    return jsonify({"status": "ok"})
 
 # ══ AWS ROUTES ════════════════════════════════════════════════════════════════
 

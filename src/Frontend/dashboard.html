@@ -994,6 +994,29 @@ footer a:hover{color:var(--gold)}
           </tbody>
         </table>
       </div>
+    </div> 
+    
+    <div class="panel full">
+      <div class="ph">
+        <div class="pt blue-t"><div class="dot"></div>Suppressed Patterns</div>
+      </div>
+    
+      <div class="tscroll">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Rule</th>
+              <th>Field</th>
+              <th>Value</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="suppressionTableBody">
+            <tr><td colspan="5"><div class="empty-state">No suppressions</div></td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>    
   </div>  
 
@@ -1006,18 +1029,21 @@ footer a:hover{color:var(--gold)}
       <div class="modal-body">
         <p class="dim">Provide feedback for this alert. This will be stored for future analysis and rule refinement.</p>
   
+        <input type="hidden" id="fbRuleId">
+        <input type="hidden" id="fbSrcIp">
+        <input type="hidden" id="fbDstIp">
+
         <label class="modal-label">Feedback Type</label>
-        <select id="feedbackType">
+        <select id="fbType">
           <option value="true_positive">True Positive</option>
           <option value="false_positive">False Positive</option>
           <option value="benign">Benign / Expected</option>
           <option value="investigate">Investigate Later</option>
           <option value="note">Add Analyst Note</option>
         </select>
-  
-        <label class="modal-label">Optional Note</label>
-        <textarea id="feedbackNote" placeholder="Add details or context..."></textarea>
-  
+        
+        <textarea id="fbNote" placeholder="Add details or context..."></textarea>        
+
         <div class="modal-actions">
           <button class="nav-btn" onclick="submitFeedback()">Submit</button>
           <button class="nav-btn red" onclick="closeFeedbackModal()">Cancel</button>
@@ -1597,13 +1623,16 @@ async function fetchAwsAlerts(){
         <td><div class="s3key" title="${a._s3_key||''}">${a._s3_key||'—'}</div></td>
         <td>
           <button class="nav-btn small"
-                  onclick="openFeedbackModal('${a._s3_key}', '${a.rule}')">
-            Feedback
-          </button>
+            onclick="openFeedbackModal({
+              rule_id: '${a.rule}',
+              src_ip: '${a.src_ip}',
+              dst_ip: '${a.dst_ip}'
+            })">
+          Feedback</button>
+
           <button class="nav-btn small ghost"
-                  onclick="openViewFeedbackModal('${a._s3_key}')">
-            View
-          </button>
+            onclick="openViewFeedbackModal('${a._s3_key}')">
+          View</button>
         </td>
       </tr>
     `).join('');
@@ -1658,6 +1687,39 @@ async function fetchCases() {
   `).join('');
 }
 
+// ── Fetch Suppressions ─────────────────────────────────────────────────
+async function fetchSuppressions() {
+  const res = await fetch(`${API}/api/suppressions`);
+  const rows = await res.json();
+
+  const tbody = document.getElementById("suppressionTableBody");
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">No suppressions</div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(s => `
+    <tr>
+      <td class="dim">${s.id}</td>
+      <td>${s.rule_id}</td>
+      <td>${s.field}</td>
+      <td>${s.value}</td>
+      <td>
+        <button class="nav-btn small red" onclick="unsuppress(${s.id})">Remove</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// ── Unsuppress ─────────────────────────────────────────────────
+async function unsuppress(id) {
+  await fetch(`${API}/api/suppressions/${id}`, {
+    method: "DELETE"
+  });
+
+  fetchSuppressions(); // refresh table
+}
 
 // ── New Case Handlers ─────────────────────────────────────────────────
 function openNewCaseModal() {
@@ -1851,6 +1913,8 @@ document.querySelectorAll('.tab').forEach(btn => {
 
     if (tab === "feedback") {
       fetchFeedback();
+      fetchCases();
+      fetchSuppressions(); 
     }
 
   });
@@ -1900,32 +1964,30 @@ document.getElementById('runSearch').addEventListener('click', async () => {
 let currentFeedbackKey = null;
 let currentFeedbackRule = null;
 
-function openFeedbackModal(s3Key, ruleId) {
-  currentFeedbackKey = s3Key;
-  currentFeedbackRule = ruleId;
-  document.getElementById("feedbackModal").classList.remove("hidden");
+function openFeedbackModal(opts) {
+  document.getElementById("fbRuleId").value = opts.rule_id;
+  document.getElementById("fbSrcIp").value  = opts.src_ip;
+  document.getElementById("fbDstIp").value  = opts.dst_ip;
+
+  document.getElementById("feedbackModal").style.display = "flex";
 }
 
 function closeFeedbackModal() {
-  document.getElementById("feedbackModal").classList.add("hidden");
-  currentFeedbackKey = null;
-  currentFeedbackRule = null;
+  document.getElementById("feedbackModal").style.display = "none";
 }
 
 async function submitFeedback() {
-  const type = document.getElementById("feedbackType").value;
-  const note = document.getElementById("feedbackNote").value.trim();
-
   const payload = {
-    packet_id: currentFeedbackKey,
-    rule_id: currentFeedbackRule,
-    feedback: type,
-    note: note
+    rule_id:  document.getElementById("fbRuleId").value,
+    feedback: document.getElementById("fbType").value,
+    note:     document.getElementById("fbNote").value,
+    src_ip:   document.getElementById("fbSrcIp").value,
+    dst_ip:   document.getElementById("fbDstIp").value
   };
 
   await fetch(`${API}/api/feedback`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {"Content-Type": "application/json"},
     body: JSON.stringify(payload)
   });
 
